@@ -1,0 +1,2 @@
+username, password, cards(1:2:3:4)
+Towl, mojimo, 1:2:3
