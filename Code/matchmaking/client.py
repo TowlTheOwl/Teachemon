@@ -15,7 +15,7 @@ while True:
     print(client.recv(1024).decode())
     inp = input("> ")
     # login, match, create login,
-    if inp == "login":
+    if inp == "login" or inp == "create login":
         # send match string to tell the server what we want to do
         client.send(inp.encode())
         print(client.recv(1024).decode())
@@ -23,6 +23,10 @@ while True:
         password = input("Password: ")
         client.send(f"{username},{password}".encode())
         print(client.recv(1024).decode())
+    if inp == "add card":
+        client.send(inp.encode())
+        print(client.recv(1024).decode())
+        client.send(f"{input("Username: ")},{input("Card num: ")}".encode())
     elif inp == "quit":
         break
     else:

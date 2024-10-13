@@ -14,7 +14,7 @@ print("Listening...")
 # list of client in match queue
 queue = []
 
-def find_login(username: str, password: str) -> int:
+def find_login(username: str, password: str="") -> int:
     """
     parameters:
     username and password of the user
@@ -25,14 +25,45 @@ def find_login(username: str, password: str) -> int:
     1: match
     """
     with open("data.txt", "r") as file:
-        data = file.readlines()[1:]
+        data = file.readlines()
         for info in data:
-            info = info.split(", ")
+            info = info.split(",")
             if info[0] == username:
                 if info[1] == password:
                         return 1
                 return 0
         return -1
+
+def create_login(username: str, password: str) -> bool:
+    """
+    return:
+    false if username is taken & login not created
+    true if login was created
+    """
+    if (find_login(username) == 0):
+        return False
+    with open("data.txt", "a") as file:
+        file.write(f"{username},{password},")
+    return True
+
+def replace_line(file_name, line_num, text):
+    lines = open(file_name, 'r').readlines()
+    lines[line_num] = text
+    out = open(file_name, 'w')
+    out.writelines(lines)
+    out.close()
+
+def add_card(username:str, card_num:str):
+    with open("data.txt", "r+") as file:
+        data = file.readlines()
+        for info in data:
+            user, pswd, card = info.split(",")
+            if user == username:
+                if len(card) == 0:
+                    replace_line("data.txt", data.index(info), info + f"{card_num}")
+                else:
+                    replace_line("data.txt", data.index(info), info + f":{card_num}")
+                return
 
 def handle_match(c1: socket.socket, c2: socket.socket):
     c1.send("MATCH".encode())
@@ -69,10 +100,21 @@ def handle_client(c: socket.socket):
         else:
             c.send("Incorrect username".encode())
     elif matching_string == "create login":
-        pass
-        # to be implemented
-
-
+        c.send("Send login info".encode())
+        username, password = client.recv(1024).decode().split(",")
+        if len(password) < 1:
+            c.send("Please type password".encode())
+        else:
+            created = create_login(username, password)
+            if created:
+                c.send("Account created".encode())
+            else:
+                c.send("Username taken".encode())
+    elif matching_string == "add card":
+        c.send("Enter card num".encode())
+        # should receive an int corresponding to user's new card
+        username, card_num = client.recv(1024).decode().split(",")
+        add_card(username, card_num)
 
 while True:
     client, addr = server.accept()
