@@ -42,6 +42,7 @@ def draw_binder():
     screen.fill("grey")
 def draw_claim():
     screen.fill("grey")
+    screen.blit(button_exit, (785,555))
 def draw_settings():
     screen.fill("grey")
     screen.blit(button_credits, (315,112))
@@ -76,11 +77,17 @@ while run:
                     pointer_on = False
                 elif pointer_y == 397:
                     page = "Claim"
-                    pointer_on = False
+                    pointer_x = 740
+                    pointer_y = 550
                 elif pointer_y == 467:
                     page = "Settings"
                     pointer_x = 270
                     pointer_y = 107
+            elif page == "Claim":
+                if pointer_x == 740:
+                    page = "Menu"
+                    pointer_x = 55
+                    pointer_y = 397
             elif page == "Settings":
                 if pointer_y == 107:
                     print("credits")
