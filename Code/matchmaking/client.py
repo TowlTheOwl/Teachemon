@@ -1,7 +1,7 @@
 import socket
 
 # Connect to server's IPv4 address
-server = "127.0.0.1"
+server = "172.28.129.24"
 # Random open port
 port = 5555
 
@@ -26,7 +26,9 @@ while True:
     if inp == "add card":
         client.send(inp.encode())
         print(client.recv(1024).decode())
-        client.send(f"{input("Username: ")},{input("Card num: ")}".encode())
+        username = input("Username: ")
+        card_num = input("Card Num: ")
+        client.send(f"{username},{card_num}".encode())
     elif inp == "quit":
         break
     else:
