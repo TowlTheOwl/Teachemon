@@ -64,6 +64,9 @@ def draw_binder(left, right):
             x += 120
         if i <= 58:
             screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
+    
+    screen.blit(font.render(str(left), True, (0, 0, 0)), (55, 500))
+
 
     x = 607
     y = 0
@@ -77,6 +80,9 @@ def draw_binder(left, right):
 
         if i <= 58:
             screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
+
+    screen.blit(font.render(str(right), True, (0, 0, 0)), (930, 500))
+
 
 def draw_claim():
     screen.fill("grey")
