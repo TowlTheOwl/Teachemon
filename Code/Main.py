@@ -22,12 +22,22 @@ button_credits = pygame.image.load("Images/credits x5.png")
 button_exit = pygame.image.load("Images/exit x5.png")
 battle = pygame.image.load("Images/fight_scene.png")
 pointer = pygame.image.load("Images/pointer x5.png")
+binder = pygame.image.load("Images/binder.png")
+resized_binder = pygame.transform.scale(binder, (1000, 600))
+
+#dicionary of cards for binder. numbers will correlate to cards, and they are all false for now 
+dict = {}
+for i in range(59):
+    dict[i] = False
+font = pygame.font.Font(None, 74)
 
 #Define Variables
 page = "Menu"
 pointer_on = True
 pointer_x = 55
 pointer_y = 257
+left_page = 1
+right_page = 2
 
 #Define Screen drawing
 
@@ -40,8 +50,34 @@ def draw_menu():
     screen.blit(button_settings, (100,472))
 def draw_battle():
     screen.blit(battle, (0,0))
-def draw_binder():
+def draw_binder(left, right):
     screen.fill("grey")
+    screen.blit(resized_binder, (0, 0))
+    x = 125
+    y = 0
+    #printing numbers for left page 
+    for i in range((left - 1) * 9, (left) * 9):
+        if i % 3 == 0:
+            y += 145
+            x = 120
+        else:
+            x += 120
+        if i <= 58:
+            screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
+
+    x = 607
+    y = 0
+    #printing numbers for right page 
+    for i in range((right - 1) * 9, right * 9):
+        if i % 3 == 0:
+            y += 145
+            x = 607
+        else:
+            x += 120
+
+        if i <= 58:
+            screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
+
 def draw_claim():
     screen.fill("grey")
     screen.blit(button_exit, (785,555))
@@ -97,12 +133,25 @@ while run:
                     page = "Menu"
                     pointer_x = 55
                     pointer_y = 467
+
+        #binder 
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
+            if page == "Binder" and left_page > 0 and right_page < 7:
+                left_page += 2
+                right_page += 2
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
+            if page == "Binder" and left_page >= 3 and right_page <= 8:
+                left_page -= 2
+                right_page -= 2
+        
+
+                    
     if page == "Menu":
         draw_menu()
     elif page == "Battle":
         draw_battle()
     elif page == "Binder":
-        draw_binder()
+        draw_binder(left_page, right_page)
     elif page == "Claim":
         draw_claim()
     elif page == "Settings":
