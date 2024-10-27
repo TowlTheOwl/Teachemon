@@ -23,7 +23,9 @@ button_exit = pygame.image.load("Images/exit x5.png")
 battle = pygame.image.load("Images/fight_scene.png")
 pointer = pygame.image.load("Images/pointer x5.png")
 binder = pygame.image.load("Images/binder.png")
+dispenser = pygame.image.load("Images/dispenser.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
+resized_dispenser = pygame.transform.scale(dispenser, (281.25, 492.5))
 
 #dicionary of cards for binder. numbers will correlate to cards, and they are all false for now 
 dict = {}
@@ -38,6 +40,7 @@ pointer_x = 55
 pointer_y = 257
 left_page = 1
 right_page = 2
+coins = 0
 
 #Define Screen drawing
 
@@ -81,6 +84,8 @@ def draw_binder(left, right):
 def draw_claim():
     screen.fill("grey")
     screen.blit(button_exit, (785,555))
+    screen.blit(resized_dispenser, (350,50))
+    screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 0))
 def draw_settings():
     screen.fill("grey")
     screen.blit(button_credits, (315,112))
