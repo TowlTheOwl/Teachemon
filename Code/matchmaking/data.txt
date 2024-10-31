@@ -1,2 +1,0 @@
-Towl,mojimo,1:2:3
-username,password,1:2
