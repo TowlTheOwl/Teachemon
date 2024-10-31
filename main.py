@@ -419,7 +419,6 @@ while run:
         draw_battle()
         
     elif page == "Binder":
-        pointer_on = False
         draw_binder(left_page, right_page)
 
     elif page == "Claim":
