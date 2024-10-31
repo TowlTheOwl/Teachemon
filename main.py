@@ -33,21 +33,50 @@ battle = pygame.image.load("Images/fight_scene.png")
 pointer = pygame.image.load("Images/pointer x5.png")
 search_glass = pygame.image.load("Images/Magnifying Glass.png")
 
+binder = pygame.image.load("Images/binder2.png")
+resized_binder = pygame.transform.scale(binder, (1000, 600))
+dispenser = pygame.image.load("Images/dispenser.png")
+resized_dispenser = pygame.transform.scale(dispenser, (600, 600))
+lever = pygame.image.load("Images/test6.png")
+lever = pygame.transform.scale(lever, (65, 364))
+rotated_lever = pygame.transform.rotate(lever, -16)
+lever_rect = rotated_lever.get_rect(center=(480, 250))
+
+
+page = "Start"
+
 #Define Variables
 username = ""
 password = ""
-clock = pygame.time.Clock()
-page = "Start"
 pointer_on = True
 pointer_x = 55
 pointer_y = 257
+left_page = 1
+right_page = 2
+coins = 0
 circle_x = 0
 circle_y = 0
+gacha = ""
+max_angle = 90
+clock = pygame.time.Clock()
+rotating_backward = False
+rotating_forward = False 
 username_box = TypingBox((center_x, 150), 800, 100, 1)
 password_box = TypingBox((center_x, 350), 800, 100, 2)
 
+
+#dicionary of cards for binder. numbers will correlate to cards, and they are all false for now 
+dict = {}
+for i in range(59):
+    dict[i] = False
+
+font = pygame.font.Font(None, 70)
 # Font Setup
 base_font = pygame.font.Font("teachemon.ttf", 30)
+
+pivot_point = (450, 400) # The fixed pivot point around which to rotate
+angle = 0  # Initial rotation angle
+rotation_speed = 2  # Degrees per frame
 
 # LOGIN SCREEN VARIABLES
 text_username = base_font.render("USERNAME", True, (0, 0, 0))
@@ -110,6 +139,8 @@ def draw_signup(events, arrow_pos):
 def draw_loading():
     screen.fill("darkgrey")
     screen.blit(search_glass, (500+circle_x,300+circle_y))
+
+
 def draw_menu():
     screen.fill("grey")
     screen.blit(logo, (30,50))
@@ -117,17 +148,60 @@ def draw_menu():
     screen.blit(button_binder, (100,332))
     screen.blit(button_claim, (100,402))
     screen.blit(button_settings, (100,472))
+
 def draw_battle():
     screen.blit(battle, (0,0))
-def draw_binder():
+
+def draw_binder(left, right):
     screen.fill("grey")
-def draw_claim():
+    screen.blit(resized_binder, (0, 0))
+    x = 170
+    y = 0
+    #printing numbers for left page 
+    for i in range((left - 1) * 9, (left) * 9):
+        if i % 3 == 0:
+            y += 130
+            x = 170
+        else:
+            x += 100
+        if i <= 58:
+            screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
+
+    screen.blit(font.render(str(left), True, (0, 0, 0)), (110, 430))
+    x = 580
+    y = 0
+
+    #printing numbers for right page 
+    for i in range((right - 1) * 9, right * 9):
+        if i % 3 == 0:
+            y += 130
+            x = 580
+        else:
+            x += 100
+
+        if i <= 58:
+            screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
+
+    screen.blit(font.render(str(right), True, (0, 0, 0)), (860, 430))
+    screen.blit(button_exit, (785,555))
+
+
+def draw_claim(gacha):
     screen.fill("grey")
     screen.blit(button_exit, (785,555))
+    screen.blit(resized_dispenser, (200,10))
+    screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
+    screen.blit(font.render(str(gacha), True, (0, 0, 0)), (480, 250))
+    
+
+def draw_rotating_lever(new_lever, rect):
+    screen.blit(new_lever, rect)
+
 def draw_settings():
     screen.fill("grey")
     screen.blit(button_credits, (315,112))
     screen.blit(button_exit, (398,182))
+
 def server_return(screen, login_return, font, page) -> str:
     # Display a rectangle saying what went wrong
     if page == "Login":
@@ -240,6 +314,7 @@ while run:
                     page = "Battle"
                 elif pointer_y == 327:
                     page = "Binder"
+                    pointer_on = False
                 elif pointer_y == 397:
                     page = "Claim"
                     pointer_x = 740
@@ -260,6 +335,11 @@ while run:
                     page = "Menu"
                     pointer_x = 55
                     pointer_y = 467
+            elif page == "Binder":
+                if pointer_y == 550:
+                    page = "Menu"
+                    pointer_x = 55
+                    pointer_y = 257
             elif page == "Login" or page == "Signup":
                 if pointer_pos == 3:
                     if page == "Login":
@@ -277,9 +357,39 @@ while run:
                     username_box.reset()
                     password_box.reset()
 
+        if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim":
+            gacha = random.randint(0, 58)
+            dict[gacha] = True 
+        
+            rotated_lever = pygame.transform.rotate(lever, -16)
+            lever_rect = rotated_lever.get_rect(center=(480, 250))
+
+            # Start rotation forward when the mouse is clicked
+            rotating_forward = True
+            rotating_backward = False            
+
+        # Binder 
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT and not pointer_on:
+            if page == "Binder" and left_page > 0 and right_page < 7:
+                left_page += 2
+                right_page += 2
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT and not pointer_on:
+            if page == "Binder" and left_page >= 3 and right_page <= 8:
+                left_page -= 2
+                right_page -= 2
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
+            if page == "Binder":
+                pointer_x = 750
+                pointer_y = 550
+                pointer_on = True
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_UP and page == "Binder":
+            pointer_on = False
+
+
     if page == "Start":
         pointer_on = True
         draw_start()
+        
     elif page == "Login":
         pointer_on = True
         if pointer_pos < 3:
@@ -287,6 +397,7 @@ while run:
         else:
             pointer_y = 400-50-22 + (pointer_pos-2)*100
         draw_login(events, pointer_pos)
+        
     elif page == "Signup":
         pointer_on = True
         if pointer_pos < 3:
@@ -294,25 +405,55 @@ while run:
         else:
             pointer_y = 400-50-22 + (pointer_pos-2)*100
         draw_signup(events, pointer_pos)
+        
     elif page == "Menu":
         pointer_on = True
         draw_menu()
+        
     elif page == "Loading":
         pointer_on = False
         draw_loading()
+
     elif page == "Battle":
         draw_battle()
+        
     elif page == "Binder":
         pointer_on = False
-        draw_binder()
+        draw_binder(left_page, right_page)
+
     elif page == "Claim":
         pointer_on = True
-        draw_claim()
+        draw_claim(gacha)
+        # Update rotation angle based on direction
+        if rotating_forward:
+            angle += rotation_speed
+            if angle >= max_angle:
+                angle = max_angle
+                rotating_forward = False
+                rotating_backward = True
+            rotated_lever = pygame.transform.rotate(rotated_lever, -2)
+        elif rotating_backward:
+            angle -= rotation_speed
+            if angle <= 0:
+                angle = 0
+                rotating_backward = False
+            rotated_lever = pygame.transform.rotate(rotated_lever, 2)
+            
+        #if rotating_forward or rotating_backward:
+        lever_rect = rotated_lever.get_rect(center=pivot_point)
+        draw_rotating_lever(rotated_lever, lever_rect)    
+        # Draw everything on screen
+        #draw_claim(rotated_lever, lever_rect, gacha)  # Update display with gacha result
+        #pygame.display.flip()  # Refresh the screen
+        #clock.tick(30)
+
+       
     elif page == "Settings":
         pointer_on = True
         draw_settings()
     if pointer_on:
         screen.blit(pointer, (pointer_x, pointer_y))
+
     pygame.display.update()
 
 pygame.quit()
