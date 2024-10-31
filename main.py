@@ -554,8 +554,7 @@ while run:
         draw_SBattle()
         
     elif page == "Binder":
-        pointer_on = False
-        draw_binder()
+        draw_binder(left_page, right_page)
 
     elif page == "Claim":
         pointer_on = True
