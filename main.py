@@ -4,7 +4,9 @@ pygame.init()
 import math
 import socket
 import random
-from TypingBox import TypingBox
+from utils.utils import *
+from utils.battle import *
+from utils.draw import *
 
 # Connect to server's IPv4 address
 server = "localhost"
@@ -115,213 +117,6 @@ signup_button_pos = (center_x, 450)
 text_signup_rect = text_signup.get_rect(center=signup_button_pos)
 text_signup_bg = text_signup.get_rect(width=399, height=60, center=signup_button_pos)
 
-# util
-def card_to_list(c):
-    return [bool(int(e)) for e in list(c)]
-
-def list_to_card(l):
-    return "".join([str(int(e)) for e in l])
-
-#Define Screen drawing
-def update_circle(radius):
-    global circle_x
-    global circle_y
-    global circle_angle
-    global circle_start
-    if circle_start:
-        circle_x = radius
-        circle_start = False
-    circle_x = math.sin(circle_angle) * radius
-    circle_y = math.cos(circle_angle) * radius
-    circle_angle += 0.05
-    if circle_angle == 360:
-        circle_angle = 0
-def draw_start():
-    screen.fill("grey")
-    screen.blit(logo, (30,50))
-    screen.blit(button_login, (100,262))
-    screen.blit(button_signup, (100,332))
-def draw_login(events, arrow_pos):
-    screen.fill("grey")
-    screen.blit(text_username, text_username_rect)
-    screen.blit(text_password, text_password_rect)
-    pygame.draw.rect(screen, (66, 245, 152), text_login_bg, border_radius=5)
-    screen.blit(text_login, text_login_rect)
-    screen.blit(text_back, text_back_rect)
-    username_box.update(events, arrow_pos)
-    password_box.update(events, arrow_pos)
-    username_box.draw(screen, base_font)
-    password_box.draw(screen, base_font)
-def draw_signup(events, arrow_pos):
-    screen.fill("grey")
-    screen.blit(text_username, text_username_rect)
-    screen.blit(text_password, text_password_rect)
-    screen.blit(text_username, text_username_rect)
-    screen.blit(text_password, text_password_rect)
-    pygame.draw.rect(screen, (66, 245, 152), text_signup_bg, border_radius=5)
-    screen.blit(text_signup, text_signup_rect)
-    screen.blit(text_back, text_back_rect)
-    username_box.update(events, arrow_pos)
-    password_box.update(events, arrow_pos)
-    username_box.draw(screen, base_font)
-    password_box.draw(screen, base_font)
-def draw_loading():
-    screen.fill("darkgrey")
-    screen.blit(search_glass, (450+circle_x,250+circle_y))
-
-
-def draw_menu():
-    screen.fill("grey")
-    screen.blit(logo, (30,50))
-    screen.blit(button_battle, (100,262))
-    screen.blit(button_binder, (100,332))
-    screen.blit(button_claim, (100,402))
-    screen.blit(button_settings, (100,472))
-
-def draw_battle_menu():
-    screen.fill("grey")
-    screen.blit(logo, (30,50))
-    screen.blit(button_multiplayer, (100,262))
-    screen.blit(button_singleplayer, (100,332))
-    screen.blit(button_exit, (100,402))
-
-def draw_singleplayerMenu():
-    screen.fill("grey")
-
-def draw_SBattle():
-    if sbattle_page == "00":
-        screen.blit(battle_00, (0,0))
-    else:
-        screen.blit(battle_main, (0,0))
-    if sbattle_page == "10":
-        t11 = fontx3.render(pteach1[3].upper(), True, "White")
-        t12 = fontx3.render(pteach1[7].upper(), True, "White")
-        t13 = fontx3.render(pteach1[11].upper(), True, "White")
-        t14 = fontx3.render(pteach1[0].upper(), True, "White")
-        screen.blit(t11, ((253-(t11.get_width()/2)),430))
-        screen.blit(t12, ((747-(t12.get_width()/2)),430))
-        screen.blit(t13, ((253-(t13.get_width()/2)),525))
-        screen.blit(t14, ((747-(t14.get_width()/2)),525))
-
-    elif sbattle_page == "20":
-        pass
-    elif sbattle_page == "30":
-        pass
-    screen.blit(player_placeholder, (140,135))
-    screen.blit(enemy_placeholder, (700,100))
-
-def draw_battle():
-    if battle_page == "Main":
-        screen.blit(battle_main, (0,0))
-
-def draw_binder(left, right):
-    screen.fill("grey")
-    screen.blit(resized_binder, (0, 0))
-    x = 170
-    y = 0
-    #printing numbers for left page 
-    for i in range((left - 1) * 9, (left) * 9):
-        if i % 3 == 0:
-            y += 130
-            x = 170
-        else:
-            x += 100
-        if i <= 58:
-            screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
-
-    screen.blit(font.render(str(left), True, (0, 0, 0)), (110, 430))
-    x = 580
-    y = 0
-
-    #printing numbers for right page 
-    for i in range((right - 1) * 9, right * 9):
-        if i % 3 == 0:
-            y += 130
-            x = 580
-        else:
-            x += 100
-
-        if i <= 58:
-            screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
-
-    screen.blit(font.render(str(right), True, (0, 0, 0)), (860, 430))
-    screen.blit(button_exit, (785,555))
-
-
-def draw_claim(gacha):
-    screen.fill("grey")
-    screen.blit(button_exit, (785,555))
-    screen.blit(resized_dispenser, (200,10))
-    screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
-    screen.blit(font.render(str(gacha), True, (0, 0, 0)), (480, 250))
-    
-
-def draw_rotating_lever(new_lever, rect):
-    screen.blit(new_lever, rect)
-
-def draw_settings():
-    screen.fill("grey")
-    screen.blit(button_credits, (315,112))
-    screen.blit(button_exit, (398,182))
-
-def server_return(screen, login_return, font, page) -> str:
-    # Display a rectangle saying what went wrong
-    if page == "Login":
-        if login_return == "1":
-            return "Menu"
-        elif login_return == "-1":
-            display_box(screen, "NO MATCHING USERNAME", font, 3)
-        else:
-            display_box(screen, "INCORRECT PASSWORD", font, 3)
-        return "Login"
-    else:
-        if login_return == "1":
-            return "Menu"
-        elif login_return == "-1":
-            display_box(screen, "USERNAME TAKEN", font, 3)
-        else:
-            display_box(screen, "BLANK PASSWORD", font, 3)
-        return "Signup"
-
-# Handle Socket Connections
-def check_received_data(received, expecting):
-    if received != expecting:
-        print(f"ERROR: received \"{received}\" when expecting \"{expecting}\"")
-        raise Exception
-def handle_login(login:bool, u: str, p: str) -> str:
-    """
-    Parameters:
-    login: True if logging in, False if creating login
-    u: username
-    p: password
-
-    Return:
-    -1: no matching username/username taken
-    0: incorrect password/blank password
-    1: match/created
-    """
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
-        client.connect((server, port))
-        check_received_data(client.recv(1024).decode(), "Enter matching string: ")
-        if login:
-            client.send("login".encode())
-        else:
-            client.send("create login".encode())
-        check_received_data(client.recv(1024).decode(), "Send login info")
-        client.send(f"{u},{p}".encode())
-        received = client.recv(1024).decode()
-    return received
-
-def display_box(screen:pygame.Surface, text, font:pygame.font.FontType, seconds):
-    rect = pygame.Rect(0, 0, 800, 300)
-    rect.center = (center_x, center_y)
-    pygame.draw.rect(screen, (100, 100, 100), rect)
-    text_disp = font.render(text, True, (255, 255, 255))
-    text_rect = text_disp.get_rect(center=(center_x, center_y))
-    screen.blit(text_disp, text_rect)
-    pygame.display.flip()
-    pygame.time.wait(seconds*1000)
-
 pointer_pos = 1
 
 #Run Program
@@ -337,9 +132,9 @@ while run:
             key_pressed = True
             keys = pygame.key.get_pressed()
         if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-            if page == "Start":
-                if pointer_y != 327:
-                    pointer_y += 70
+            pointer_pos += 1
+            if False:
+                pass
             elif page == "Menu" or page == "Battle_Menu":
                 if pointer_y != 467:
                     pointer_y += 70
@@ -352,11 +147,11 @@ while run:
             elif page == "Settings":
                 if pointer_y != 177:
                     pointer_y += 70
-            elif page == "Login" or page == "Signup":
-                if pointer_pos < 4:
-                    pointer_pos += 1
         if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-            if page == "Start" or page == "Menu" or page == "Battle_Menu":
+            pointer_pos -= 1
+            if pointer_pos < 1:
+                pointer_pos = 1
+            if page == "Menu" or page == "Battle_Menu":
                 if pointer_y != 257:
                     pointer_y -= 70
             elif page == "SBattle":
@@ -365,9 +160,6 @@ while run:
             elif page == "Settings":
                 if pointer_y != 107:
                     pointer_y -= 70
-            elif page == "Login" or "Signup":
-                if pointer_pos > 1:
-                    pointer_pos -= 1
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
             if page == "Start":
                 if pointer_y == 257:
@@ -466,7 +258,7 @@ while run:
             elif page == "Login" or page == "Signup":
                 if pointer_pos == 3:
                     if page == "Login":
-                        login_return = handle_login(True, username_box.return_text(), password_box.return_text())
+                        login_return = handle_login(server, port, True, username_box.return_text(), password_box.return_text())
                     else:
                         login_return = handle_login(False, username_box.return_text(), password_box.return_text())
                     page = server_return(screen, login_return, base_font, page)
@@ -479,6 +271,7 @@ while run:
                     pointer_y = 257
                     username_box.reset()
                     password_box.reset()
+            pointer_pos = 1
         
         if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
             if page == "SBattle":
@@ -520,45 +313,59 @@ while run:
 
     if page == "Start":
         pointer_on = True
-        draw_start()
+        if pointer_pos > 2:
+            pointer_pos = 2
+        
+        pointer_x = 55
+        pointer_y = 257 + 70 * (pointer_pos-1)
+        draw_start(screen, logo, button_login, button_signup)
         
     elif page == "Login":
         pointer_on = True
+        if pointer_pos > 4:
+            pointer_pos = 4
+        
         if pointer_pos < 3:
             pointer_y = pointer_pos * 200 - 50 - 22
         else:
             pointer_y = 400-50-22 + (pointer_pos-2)*100
-        draw_login(events, pointer_pos)
+        draw_login(screen, events, pointer_pos, (text_username, text_username_rect, username_box), 
+                   (text_password, text_password_rect, password_box), (text_login_bg, text_login, text_login_rect), (text_back, text_back_rect), base_font)
         
     elif page == "Signup":
         pointer_on = True
+        if pointer_pos > 4:
+            pointer_pos = 4
+
         if pointer_pos < 3:
             pointer_y = pointer_pos * 200 - 50 - 22
         else:
             pointer_y = 400-50-22 + (pointer_pos-2)*100
-        draw_signup(events, pointer_pos)
+        draw_login(screen, events, pointer_pos, (text_username, text_username_rect, username_box), 
+                   (text_password, text_password_rect, password_box), (text_signup_bg, text_signup, text_signup_rect), (text_back, text_back_rect), base_font)
         
     elif page == "Menu":
         pointer_on = True
-        draw_menu()
+        draw_menu(screen, logo, button_battle, button_binder, button_claim, button_settings)
         
     elif page == "Loading":
         pointer_on = False
-        draw_loading()
-        update_circle(50)
+        draw_loading(screen, search_glass, circle_x, circle_y)
+        toUpdate = update_circle(circle_x, circle_y, circle_angle, circle_start, 50)
+        circle_x, circle_y, circle_angle, circle_start = toUpdate
     elif page == "Battle_Menu":
-        draw_battle_menu()
+        draw_battle_menu(screen, logo, button_multiplayer, button_singleplayer, button_exit)
     elif page == "SingleplayerMenu":
-        draw_singleplayerMenu()
+        draw_singleplayer_menu(screen)
     elif page == "SBattle":
-        draw_SBattle()
+        draw_singleplayer_battle(screen, sbattle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
         
     elif page == "Binder":
-        draw_binder(left_page, right_page)
+        draw_binder(screen, left_page, right_page, resized_binder, font, button_exit)
 
     elif page == "Claim":
         pointer_on = True
-        draw_claim(gacha)
+        draw_claim(screen, button_exit, resized_dispenser, font, coins, gacha)
         # Update rotation angle based on direction
         if rotating_forward:
             angle += rotation_speed
@@ -576,7 +383,7 @@ while run:
             
         #if rotating_forward or rotating_backward:
         lever_rect = rotated_lever.get_rect(center=pivot_point)
-        draw_rotating_lever(rotated_lever, lever_rect)    
+        draw_rotating_lever(screen, rotated_lever, lever_rect)    
         # Draw everything on screen
         #draw_claim(rotated_lever, lever_rect, gacha)  # Update display with gacha result
         #pygame.display.flip()  # Refresh the screen
