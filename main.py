@@ -131,156 +131,122 @@ while run:
         if event.type == pygame.KEYDOWN: 
             key_pressed = True
             keys = pygame.key.get_pressed()
+
+
         if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-            pointer_pos += 1
-            if False:
-                pass
-            elif page == "Menu" or page == "Battle_Menu":
-                if pointer_y != 467:
-                    pointer_y += 70
-            elif page == "Battle_Menu":
-                if pointer_y != 397:
-                    pointer_y += 70
-            elif page == "SBattle":
-                if pointer_y != 530:
-                    pointer_y += 95
-            elif page == "Settings":
-                if pointer_y != 177:
-                    pointer_y += 70
+            if page == "SBattle":
+                if pointer_pos < 3:
+                    pointer_pos += 2
+            elif page == "Binder":
+                pointer_pos = 2
+            else:
+                pointer_pos += 1
+
+
         if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-            pointer_pos -= 1
-            if pointer_pos < 1:
+            if page == "SBattle":
+                if pointer_pos > 2:
+                    pointer_pos -= 2
+            elif page == "Binder":
                 pointer_pos = 1
-            if page == "Menu" or page == "Battle_Menu":
-                if pointer_y != 257:
-                    pointer_y -= 70
-            elif page == "SBattle":
-                if pointer_y != 435:
-                    pointer_y -= 95
-            elif page == "Settings":
-                if pointer_y != 107:
-                    pointer_y -= 70
+            else:
+                if pointer_pos > 1:
+                    pointer_pos -= 1
+
+
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
             if page == "Start":
-                if pointer_y == 257:
+                if pointer_pos == 1:
                     page = "Login"
-                elif pointer_y == 327:
+                elif pointer_pos == 2:
                     page = "Signup"
-                pointer_pos = 1
-                pointer_x = 55
-                pointer_y = 150
             elif page == "Menu":
-                if pointer_y == 257:
+                if pointer_pos == 1:
                     page = "Battle_Menu"
-                elif pointer_y == 327:
+                elif pointer_pos == 2:
                     page = "Binder"
-                    pointer_on = False
-                elif pointer_y == 397:
+                elif pointer_pos == 3:
                     page = "Claim"
-                    pointer_x = 740
-                    pointer_y = 550
-                elif pointer_y == 467:
+                elif pointer_pos == 4:
                     page = "Settings"
-                    pointer_x = 270
-                    pointer_y = 107
             elif page == "Battle_Menu":
-                if pointer_y == 257:
+                if pointer_pos == 1:
                     page = "Loading"
-                elif pointer_y == 327:
+                elif pointer_pos == 2:
                     page = "SBattle"
-                    pointer_y = 435
-                    pointer_x = 30
-                elif pointer_y == 397:
+                elif pointer_pos == 3:
                     page = "Menu"
-                    pointer_y = 257
             elif page == "SBattle":
                 if sbattle_page == "00":
-                    if pointer_x == 30 and pointer_y == 435:
+                    if pointer_pos == 1:
                         sbattle_page = "10"
-                    elif pointer_x == 525 and pointer_y == 435:
+                    elif pointer_pos == 2:
                         sbattle_page = "20"
-                    elif pointer_x == 30 and pointer_y == 530:
+                    elif pointer_pos == 3:
                         sbattle_page = "30"
-                    elif pointer_x == 525 and pointer_y == 530:
+                    elif pointer_pos == 4:
                         page = "Battle_Menu"
-                        pointer_x = 55
-                        pointer_y = 257
-                elif sbattle_page == "10":
-                    if pointer_x == 30 and pointer_y == 435:
-                        sbattle_page = "11"
-                    elif pointer_x == 525 and pointer_y == 435:
-                        sbattle_page = "12"
-                    elif pointer_x == 30 and pointer_y == 530:
-                        sbattle_page = "13"
-                    elif pointer_x == 525 and pointer_y == 530:
+                        pointer_pos = 1
+                elif sbattle_page in ["10", "20", "30"]:
+                    if pointer_pos == 1:
+                        sbattle_page = sbattle_page[0] + "1"
+                    if pointer_pos == 2:
+                        sbattle_page = sbattle_page[0] + "2"
+                    if pointer_pos == 3:
+                        sbattle_page = sbattle_page[0] + "3"
+                    if pointer_pos == 4:
+                        pointer_pos = 1
                         sbattle_page = "00"
-                        pointer_x = 30
-                        pointer_y = 435
-                elif sbattle_page == "20":
-                    if pointer_x == 30 and pointer_y == 435:
-                        sbattle_page = "21"
-                    elif pointer_x == 525 and pointer_y == 435:
-                        sbattle_page = "22"
-                    elif pointer_x == 30 and pointer_y == 530:
-                        sbattle_page = "23"
-                    elif pointer_x == 525 and pointer_y == 530:
-                        sbattle_page = "00"
-                        pointer_x = 30
-                        pointer_y = 435
-                elif sbattle_page == "30":
-                    if pointer_x == 30 and pointer_y == 435:
-                        sbattle_page = "31"
-                    elif pointer_x == 525 and pointer_y == 435:
-                        sbattle_page = "32"
-                    elif pointer_x == 30 and pointer_y == 530:
-                        sbattle_page = "33"
-                    elif pointer_x == 525 and pointer_y == 530:
-                        sbattle_page = "00"
-                        pointer_x = 30
-                        pointer_y = 435
             elif page == "Claim":
-                if pointer_x == 740:
+                if pointer_pos == 1:
                     page = "Menu"
-                    pointer_x = 55
-                    pointer_y = 397
             elif page == "Settings":
-                if pointer_y == 107:
+                if pointer_pos == 1:
                     print("credits")
-                elif pointer_y == 177:
+                elif pointer_pos == 2:
                     page = "Menu"
-                    pointer_x = 55
-                    pointer_y = 467
             elif page == "Binder":
-                if pointer_y == 550:
+                if pointer_pos == 2:
                     page = "Menu"
-                    pointer_x = 55
-                    pointer_y = 257
             elif page == "Login" or page == "Signup":
                 if pointer_pos == 3:
                     if page == "Login":
                         login_return = handle_login(server, port, True, username_box.return_text(), password_box.return_text())
                     else:
-                        login_return = handle_login(False, username_box.return_text(), password_box.return_text())
+                        login_return = handle_login(server, port, False, username_box.return_text(), password_box.return_text())
                     page = server_return(screen, login_return, base_font, page)
-                    if page == "Menu":
-                        pointer_x = 55
-                        pointer_y = 257
                 if pointer_pos == 4:
                     page = "Start"
-                    pointer_x = 55
-                    pointer_y = 257
                     username_box.reset()
                     password_box.reset()
             pointer_pos = 1
         
+
         if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
             if page == "SBattle":
-                if pointer_x != 30:
-                    pointer_x -= 495
+                """
+                [1 2
+                 3 4]
+                """
+                if pointer_pos % 2 == 0:
+                    pointer_pos -= 1
+            elif page == "Binder":
+                if pointer_pos == 1:
+                    if left_page >= 3 and right_page <= 8:
+                        left_page -= 2
+                        right_page -= 2
+    
+
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
             if page == "SBattle":
-                if pointer_x != 525:
-                    pointer_x += 495
+                if pointer_pos % 2 == 1:
+                    pointer_pos += 1
+            elif page == "Binder":
+                if pointer_pos == 1:
+                    if left_page > 0 and right_page < 7:
+                        left_page += 2
+                        right_page += 2
+
 
         if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim":
             gacha = random.randint(0, 58)
@@ -291,25 +257,7 @@ while run:
 
             # Start rotation forward when the mouse is clicked
             rotating_forward = True
-            rotating_backward = False            
-
-        # Binder 
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT and not pointer_on:
-            if page == "Binder" and left_page > 0 and right_page < 7:
-                left_page += 2
-                right_page += 2
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT and not pointer_on:
-            if page == "Binder" and left_page >= 3 and right_page <= 8:
-                left_page -= 2
-                right_page -= 2
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-            if page == "Binder":
-                pointer_x = 750
-                pointer_y = 550
-                pointer_on = True
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_UP and page == "Binder":
-            pointer_on = False
-
+            rotating_backward = False
 
     if page == "Start":
         pointer_on = True
@@ -324,7 +272,7 @@ while run:
         pointer_on = True
         if pointer_pos > 4:
             pointer_pos = 4
-        
+        pointer_x = 55
         if pointer_pos < 3:
             pointer_y = pointer_pos * 200 - 50 - 22
         else:
@@ -336,7 +284,8 @@ while run:
         pointer_on = True
         if pointer_pos > 4:
             pointer_pos = 4
-
+        
+        pointer_x = 55
         if pointer_pos < 3:
             pointer_y = pointer_pos * 200 - 50 - 22
         else:
@@ -346,6 +295,11 @@ while run:
         
     elif page == "Menu":
         pointer_on = True
+        if pointer_pos > 4:
+            pointer_pos = 4
+        
+        pointer_x = 55
+        pointer_y = 257 + 70 * (pointer_pos - 1)
         draw_menu(screen, logo, button_battle, button_binder, button_claim, button_settings)
         
     elif page == "Loading":
@@ -353,18 +307,48 @@ while run:
         draw_loading(screen, search_glass, circle_x, circle_y)
         toUpdate = update_circle(circle_x, circle_y, circle_angle, circle_start, 50)
         circle_x, circle_y, circle_angle, circle_start = toUpdate
+
     elif page == "Battle_Menu":
+        if pointer_pos > 3:
+            pointer_pos = 3
+        
+        pointer_x = 55
+        pointer_y = 257 + 70 * (pointer_pos - 1)
         draw_battle_menu(screen, logo, button_multiplayer, button_singleplayer, button_exit)
     elif page == "SingleplayerMenu":
         draw_singleplayer_menu(screen)
+
     elif page == "SBattle":
+        """
+        pointer pos
+        [1 2
+         3 4]
+        """
+        if pointer_pos % 2 == 1:
+            pointer_x = 30
+        else:
+            pointer_x = 525
+        
+        if pointer_pos <= 2:
+            pointer_y = 435
+        else:
+            pointer_y = 530
         draw_singleplayer_battle(screen, sbattle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
         
     elif page == "Binder":
+        pointer_x = 750
+        pointer_y = 550
+        if pointer_pos == 2:
+            pointer_on = True
+        else:
+            pointer_on = False
         draw_binder(screen, left_page, right_page, resized_binder, font, button_exit)
 
     elif page == "Claim":
         pointer_on = True
+        pointer_pos = 1
+        pointer_x = 740
+        pointer_y = 550
         draw_claim(screen, button_exit, resized_dispenser, font, coins, gacha)
         # Update rotation angle based on direction
         if rotating_forward:
@@ -392,7 +376,12 @@ while run:
        
     elif page == "Settings":
         pointer_on = True
-        draw_settings()
+        if pointer_pos > 2:
+            pointer_pos = 2
+        
+        pointer_x = 270
+        pointer_y = 107 + 70 * (pointer_pos-1)
+        draw_settings(screen, button_credits, button_exit)
     if pointer_on:
         screen.blit(pointer, (pointer_x, pointer_y))
 

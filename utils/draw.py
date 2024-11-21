@@ -109,3 +109,18 @@ def draw_binder(screen, left, right, binder, font, button_exit):
 
     screen.blit(font.render(str(right), True, (0, 0, 0)), (860, 430))
     screen.blit(button_exit, (785,555))
+
+def draw_claim(screen, button_exit, dispenser, font, coins, gacha):
+    screen.fill("grey")
+    screen.blit(button_exit, (785,555))
+    screen.blit(dispenser, (200,10))
+    screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
+    screen.blit(font.render(str(gacha), True, (0, 0, 0)), (480, 250))
+
+def draw_rotating_lever(screen, new_lever, rect):
+    screen.blit(new_lever, rect)
+
+def draw_settings(screen, button_credits, button_exit):
+    screen.fill("grey")
+    screen.blit(button_credits, (315,112))
+    screen.blit(button_exit, (398,182))

@@ -1,4 +1,5 @@
 import pygame
+import socket
 
 class TypingBox:
     def __init__(self, pos:tuple, length, width, id) -> None:
@@ -38,3 +39,68 @@ def card_to_list(c):
 
 def list_to_card(l):
     return "".join([str(int(e)) for e in l])
+
+def server_return(screen, login_return, font, page) -> str:
+    # Display a rectangle saying what went wrong
+    if page == "Login":
+        if login_return == "1":
+            return "Menu"
+        elif login_return == "-1":
+            display_box(screen, "NO MATCHING USERNAME", font, 3)
+        else:
+            display_box(screen, "INCORRECT PASSWORD", font, 3)
+        return "Login"
+    else:
+        if login_return == "1":
+            return "Menu"
+        elif login_return == "-1":
+            display_box(screen, "USERNAME TAKEN", font, 3)
+        else:
+            display_box(screen, "BLANK PASSWORD", font, 3)
+        return "Signup"
+
+def display_box(screen:pygame.Surface, text, font:pygame.font.FontType, seconds):
+    center_x, center_y = get_center()
+    rect = pygame.Rect(0, 0, 800, 300)
+    rect.center = (center_x, center_y)
+    pygame.draw.rect(screen, (100, 100, 100), rect)
+    text_disp = font.render(text, True, (255, 255, 255))
+    text_rect = text_disp.get_rect(center=(center_x, center_y))
+    screen.blit(text_disp, text_rect)
+    pygame.display.flip()
+    pygame.time.wait(seconds*1000)
+
+def get_center():
+    center_x = 500
+    center_y = 300
+    return center_x, center_y
+
+# Handle Socket Connections
+def check_received_data(received, expecting):
+    if received != expecting:
+        print(f"ERROR: received \"{received}\" when expecting \"{expecting}\"")
+        raise Exception
+    
+def handle_login(server, port, login:bool, u: str, p: str) -> str:
+    """
+    Parameters:
+    login: True if logging in, False if creating login
+    u: username
+    p: password
+
+    Return:
+    -1: no matching username/username taken
+    0: incorrect password/blank password
+    1: match/created
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+        client.connect((server, port))
+        check_received_data(client.recv(1024).decode(), "Enter matching string: ")
+        if login:
+            client.send("login".encode())
+        else:
+            client.send("create login".encode())
+        check_received_data(client.recv(1024).decode(), "Send login info")
+        client.send(f"{u},{p}".encode())
+        received = client.recv(1024).decode()
+    return received
