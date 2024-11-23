@@ -7,6 +7,7 @@ import random
 from utils.utils import *
 from utils.battle import *
 from utils.draw import *
+import threading
 
 # Connect to server's IPv4 address
 server = "localhost"
@@ -59,7 +60,7 @@ password = ""
 send = ""
 receive = ""
 sbattle_page = "00"
-battle_page = "Main"
+battle_page = "00"
 fontx3 = pygame.font.Font("Teachemon.ttf", 21)
 fontx5 = pygame.font.Font("Teachemon.ttf", 35)
 teacher_file = open("Data/TeacheData.txt", "r")
@@ -119,6 +120,10 @@ text_signup_bg = text_signup.get_rect(width=399, height=60, center=signup_button
 
 pointer_pos = 1
 
+connection = None
+found_match = [False]
+waiting_in_queue = False
+
 #Run Program
 while run:
     key_pressed = False
@@ -128,13 +133,15 @@ while run:
     for event in events:
         if event.type == pygame.QUIT:
             run = False
+            if waiting_in_queue:
+                found_match[0] = True
         if event.type == pygame.KEYDOWN: 
             key_pressed = True
             keys = pygame.key.get_pressed()
 
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
-            if page == "SBattle":
+            if page == "SBattle" or page == "Battle":
                 if pointer_pos < 3:
                     pointer_pos += 2
             elif page == "Binder":
@@ -144,7 +151,7 @@ while run:
 
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
-            if page == "SBattle":
+            if page == "SBattle" or page == "Battle":
                 if pointer_pos > 2:
                     pointer_pos -= 2
             elif page == "Binder":
@@ -172,6 +179,17 @@ while run:
             elif page == "Battle_Menu":
                 if pointer_pos == 1:
                     page = "Loading"
+                    connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    connection.connect((server, port))
+                    check_received_data(connection.recv(1024).decode(), "Enter matching string: ")
+                    connection.send("match".encode())
+                    received = connection.recv(1024).decode()
+                    if received == "SEARCHING":
+                        page = "Loading"
+                    else:
+                        print(received)
+                    found_match[0] = False
+                        
                 elif pointer_pos == 2:
                     page = "SBattle"
                 elif pointer_pos == 3:
@@ -197,6 +215,27 @@ while run:
                     if pointer_pos == 4:
                         pointer_pos = 1
                         sbattle_page = "00"
+            elif page == "Battle":
+                if battle_page == "00":
+                    if pointer_pos == 1:
+                        battle_page = "10"
+                    elif pointer_pos == 2:
+                        battle_page = "20"
+                    elif pointer_pos == 3:
+                        battle_page = "30"
+                    elif pointer_pos == 4:
+                        page = "Battle_Menu"
+                        pointer_pos = 1
+                elif battle_page in ["10", "20", "30"]:
+                    if pointer_pos == 1:
+                        battle_page = battle_page[0] + "1"
+                    if pointer_pos == 2:
+                        battle_page = battle_page[0] + "2"
+                    if pointer_pos == 3:
+                        battle_page = battle_page[0] + "3"
+                    if pointer_pos == 4:
+                        pointer_pos = 1
+                        battle_page = "00"
             elif page == "Claim":
                 if pointer_pos == 1:
                     page = "Menu"
@@ -223,7 +262,7 @@ while run:
         
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
-            if page == "SBattle":
+            if page == "SBattle" or page == "Battle":
                 """
                 [1 2
                  3 4]
@@ -238,7 +277,7 @@ while run:
     
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
-            if page == "SBattle":
+            if page == "SBattle" or page == "Battle":
                 if pointer_pos % 2 == 1:
                     pointer_pos += 1
             elif page == "Binder":
@@ -301,12 +340,6 @@ while run:
         pointer_x = 55
         pointer_y = 257 + 70 * (pointer_pos - 1)
         draw_menu(screen, logo, button_battle, button_binder, button_claim, button_settings)
-        
-    elif page == "Loading":
-        pointer_on = False
-        draw_loading(screen, search_glass, circle_x, circle_y)
-        toUpdate = update_circle(circle_x, circle_y, circle_angle, circle_start, 50)
-        circle_x, circle_y, circle_angle, circle_start = toUpdate
 
     elif page == "Battle_Menu":
         if pointer_pos > 3:
@@ -315,6 +348,7 @@ while run:
         pointer_x = 55
         pointer_y = 257 + 70 * (pointer_pos - 1)
         draw_battle_menu(screen, logo, button_multiplayer, button_singleplayer, button_exit)
+
     elif page == "SingleplayerMenu":
         draw_singleplayer_menu(screen)
 
@@ -333,7 +367,35 @@ while run:
             pointer_y = 435
         else:
             pointer_y = 530
-        draw_singleplayer_battle(screen, sbattle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
+        draw_battle(screen, sbattle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
+        
+    elif page == "Loading":
+        pointer_on = False
+        if not waiting_in_queue:
+            waiting_in_queue = True
+            threading.Thread(target=wait_in_queue, args=(connection,found_match)).start()
+        if found_match[0]:
+            page = "Battle"
+            waiting_in_queue = False
+        else:
+            draw_loading(screen, search_glass, circle_x, circle_y)
+            toUpdate = update_circle(circle_x, circle_y, circle_angle, circle_start, 50)
+            circle_x, circle_y, circle_angle, circle_start = toUpdate
+    
+    elif page == "Battle":
+        pointer_on = True
+        if pointer_pos % 2 == 1:
+            pointer_x = 30
+        else:
+            pointer_x = 525
+        
+        if pointer_pos <= 2:
+            pointer_y = 435
+        else:
+            pointer_y = 530
+
+        draw_battle(screen, battle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
+
         
     elif page == "Binder":
         pointer_x = 750

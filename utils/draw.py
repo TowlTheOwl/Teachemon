@@ -55,7 +55,7 @@ def draw_battle_menu(screen, logo, button_m, button_s, button_e):
 def draw_singleplayer_menu(screen):
     screen.fill("grey")
 
-def draw_singleplayer_battle(screen, page, player_img, enemy_img, font, battle_base, battle_blank, teacher_info):
+def draw_battle(screen, page, player_img, enemy_img, font, battle_base, battle_blank, teacher_info):
     if page == "00":
         screen.blit(battle_base, (0,0))
     else:
@@ -77,9 +77,9 @@ def draw_singleplayer_battle(screen, page, player_img, enemy_img, font, battle_b
     screen.blit(player_img, (140,135))
     screen.blit(enemy_img, (700,100))
 
-def draw_battle(screen, battle_page, battle_main):
-    if battle_page == "Main":
-        screen.blit(battle_main, (0, 0))
+# def draw_battle(screen, battle_page, battle_main):
+#     if battle_page == "Main":
+#         screen.blit(battle_main, (0, 0))
 
 def draw_binder(screen, left, right, binder, font, button_exit):
     screen.fill("grey")
