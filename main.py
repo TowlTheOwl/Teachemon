@@ -21,7 +21,6 @@ screen = pygame.display.set_mode((ScreenWidth, ScreenHeight))
 center_x = 500
 center_y = 300
 pygame.display.set_caption("Teachemon")
-run = True
 
 #Import Images
 logo = pygame.image.load("Images/logo x4.png")
@@ -120,21 +119,31 @@ text_signup_bg = text_signup.get_rect(width=399, height=60, center=signup_button
 
 pointer_pos = 1
 
-connection = None
-found_match = [False]
-waiting_in_queue = False
+connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+connection.connect((server, port))
+running = [True]
+# login return, signup return, searching
+server_messages = [None, None, None]
+userdata = [username, password]
+
+threading.Thread(target=handle_server_connection, args=(connection,running,server_messages,userdata)).start()
 
 #Run Program
-while run:
+while running[0]:
     key_pressed = False
     clock.tick(24)
     #Sense for events like Quit and Key presses
     events = pygame.event.get()
+
+    # Check if user in queue
+    if server_messages[2] is not None:
+        if not server_messages[2]:
+            page = "Loading"
+
     for event in events:
         if event.type == pygame.QUIT:
+            connection.close()
             run = False
-            if waiting_in_queue:
-                found_match[0] = True
         if event.type == pygame.KEYDOWN: 
             key_pressed = True
             keys = pygame.key.get_pressed()
@@ -179,17 +188,7 @@ while run:
             elif page == "Battle_Menu":
                 if pointer_pos == 1:
                     page = "Loading"
-                    connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    connection.connect((server, port))
-                    check_received_data(connection.recv(1024).decode(), "Enter matching string: ")
                     connection.send("match".encode())
-                    received = connection.recv(1024).decode()
-                    if received == "SEARCHING":
-                        page = "Loading"
-                    else:
-                        print(received)
-                    found_match[0] = False
-                        
                 elif pointer_pos == 2:
                     page = "SBattle"
                 elif pointer_pos == 3:
@@ -249,11 +248,15 @@ while run:
                     page = "Menu"
             elif page == "Login" or page == "Signup":
                 if pointer_pos == 3:
+                    # update user data and requeset login/signup
+                    userdata[0] = username_box.return_text()
+                    userdata[1] = password_box.return_text()
                     if page == "Login":
-                        login_return = handle_login(server, port, True, username_box.return_text(), password_box.return_text())
+                        # login_return = handle_login(connection, True, username_box.return_text(), password_box.return_text())
+                        connection.send("login".encode())
                     else:
-                        login_return = handle_login(server, port, False, username_box.return_text(), password_box.return_text())
-                    page = server_return(screen, login_return, base_font, page)
+                        # login_return = handle_login(connection, False, username_box.return_text(), password_box.return_text())
+                        connection.send("signup".encode())
                 if pointer_pos == 4:
                     page = "Start"
                     username_box.reset()
@@ -298,6 +301,9 @@ while run:
             rotating_forward = True
             rotating_backward = False
 
+    ### HANDLE SERVER MESSAGES
+    
+
     if page == "Start":
         pointer_on = True
         if pointer_pos > 2:
@@ -318,6 +324,20 @@ while run:
             pointer_y = 400-50-22 + (pointer_pos-2)*100
         draw_login(screen, events, pointer_pos, (text_username, text_username_rect, username_box), 
                    (text_password, text_password_rect, password_box), (text_login_bg, text_login, text_login_rect), (text_back, text_back_rect), base_font)
+
+        
+        # check login response
+        if server_messages[0] is not None:
+            response = server_messages[0]
+            if response == "1":
+                page = "Menu"
+            elif response == "0":
+                display_box(screen, "INCORRECT PASSWORD", base_font, 3)
+            elif response == "2":
+                display_box(screen, "ALREADY LOGGED IN", base_font, 3)
+            elif response == "3":
+                display_box(screen, "NO MATCHING USERNAME", base_font, 3)
+            server_messages[0] = None
         
     elif page == "Signup":
         pointer_on = True
@@ -332,6 +352,17 @@ while run:
         draw_login(screen, events, pointer_pos, (text_username, text_username_rect, username_box), 
                    (text_password, text_password_rect, password_box), (text_signup_bg, text_signup, text_signup_rect), (text_back, text_back_rect), base_font)
         
+        # check signup response
+        if server_messages[1] is not None:
+            response = server_messages[1]
+            if response == "1":
+                page = "Menu"
+            elif response == "0":
+                display_box(screen, "BLANK PASSWORD", base_font, 3)
+            elif response == "2":
+                display_box(screen, "USERNAME TAKEN", base_font, 3)
+            server_messages[1] = None
+
     elif page == "Menu":
         pointer_on = True
         if pointer_pos > 4:
@@ -371,12 +402,8 @@ while run:
         
     elif page == "Loading":
         pointer_on = False
-        if not waiting_in_queue:
-            waiting_in_queue = True
-            threading.Thread(target=wait_in_queue, args=(connection,found_match)).start()
-        if found_match[0]:
+        if server_messages[2] is not None and server_messages[2]:
             page = "Battle"
-            waiting_in_queue = False
         else:
             draw_loading(screen, search_glass, circle_x, circle_y)
             toUpdate = update_circle(circle_x, circle_y, circle_angle, circle_start, 50)
