@@ -1,0 +1,2 @@
+Placeholder,Tech,100,Henry poops,1,1,1,Daniel farts,2,2,2,Get house points,3,3,3
+Placeholder2,Tech,100,Attack 1,1,1,1,Attack 2,2,2,2,Attack 3,3,3,3

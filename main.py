@@ -40,10 +40,10 @@ battle_main = pygame.image.load("Images/battle_main.png")
 battle_00 = pygame.image.load("Images/battle_00.png")
 pointer = pygame.image.load("Images/pointer x5.png")
 search_glass = pygame.image.load("Images/Magnifying Glass.png")
+binder_highlight = pygame.image.load("Images/yellow border.png")
 
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
-binder_highlight = pygame.image.load("Images/yellow border.png")
 dispenser = pygame.image.load("Images/dispenser.png")
 resized_dispenser = pygame.transform.scale(dispenser, (600, 600))
 lever = pygame.image.load("Images/test6.png")
@@ -51,6 +51,8 @@ lever = pygame.transform.scale(lever, (65, 364))
 rotated_lever = pygame.transform.rotate(lever, -16)
 lever_rect = rotated_lever.get_rect(center=(480, 250))
 binder_highlight = pygame.transform.scale(binder_highlight, (180, 180))
+
+
 page = "Start"
 
 #Define Variables
@@ -275,7 +277,7 @@ while running[0]:
                 """
                 if pointer_pos % 2 == 0:
                     pointer_pos -= 1
-            # going through each individual card now not flipping through pages 
+            # for individual flipping of binder
             #elif page == "Binder":
                 #if pointer_pos == 1:
                     #if left_page >= 3 and right_page <= 8:
@@ -287,7 +289,6 @@ while running[0]:
             if page == "SBattle" or page == "Battle":
                 if pointer_pos % 2 == 1:
                     pointer_pos += 1
-            # using highlight instead to switch pages
             #elif page == "Binder":
                 #if pointer_pos == 1:
                     #if left_page > 0 and right_page < 7:
@@ -306,6 +307,7 @@ while running[0]:
             rotating_forward = True
             rotating_backward = False
 
+        
         if page == "Binder" and event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RIGHT and not pointer_on:
                 if highlight_x == 305:
@@ -347,7 +349,6 @@ while running[0]:
             elif event.key == pygame.K_DOWN and highlight_y <= 211:
                 highlight_y += 133
                 highlight_num += 3
-
 
     ### HANDLE SERVER MESSAGES
     
@@ -487,14 +488,13 @@ while running[0]:
             #screen.blit(base_font.render(str(highlight_num), True, (0, 0, 0)), (300, 300))
 
 
-
     elif page == "Claim":
         pointer_on = True
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
         draw_claim(screen, button_exit, resized_dispenser, font, coins, gacha)
-
+        # Update rotation angle based on direction
         if rotating_forward:
             angle += rotation_speed
             if angle >= max_angle:
@@ -509,9 +509,9 @@ while running[0]:
                 rotating_backward = False
             rotated_lever = pygame.transform.rotate(rotated_lever, 2)
             
+        #if rotating_forward or rotating_backward:
         lever_rect = rotated_lever.get_rect(center=pivot_point)
         draw_rotating_lever(screen, rotated_lever, lever_rect)    
-
 
        
     elif page == "Settings":

@@ -84,7 +84,6 @@ def draw_battle(screen, page, player_img, enemy_img, font, battle_base, battle_b
 def draw_binder(screen, left, right, binder, font, button_exit):
     screen.fill("grey")
     screen.blit(binder, (0, 0))
-
     x = 170
     y = 0
     for i in range((left-1)*9, left*9):
@@ -95,7 +94,7 @@ def draw_binder(screen, left, right, binder, font, button_exit):
             x += 100
         if i <= 58:
             screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
-    screen.blit(font.render(str(left), True, (0, 0, 0)), (110, 450))
+    screen.blit(font.render(str(left), True, (0, 0, 0)), (110, 430))
     x = 580
     y = 0
     for i in range((right - 1) * 9, right * 9):
@@ -104,11 +103,11 @@ def draw_binder(screen, left, right, binder, font, button_exit):
             x = 580
         else:
             x += 100
-            
+
         if i <= 58:
             screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
 
-    screen.blit(font.render(str(right), True, (0, 0, 0)), (860, 450))
+    screen.blit(font.render(str(right), True, (0, 0, 0)), (860, 430))
     screen.blit(button_exit, (785,555))
 
 def draw_claim(screen, button_exit, dispenser, font, coins, gacha):
