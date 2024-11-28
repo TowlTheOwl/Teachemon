@@ -157,7 +157,7 @@ class Server:
         1: match
         2: already logged in
         """
-        with open("data.txt", "r") as file:
+        with open("user_data.txt", "r") as file:
             data = file.readlines()
             for info in data:
                 info = info.split(",")
@@ -177,7 +177,7 @@ class Server:
         """
         if (self.find_login(username) == 0):
             return False
-        with open("data.txt", "a") as file:
+        with open("user_data.txt", "a") as file:
             file.write(f"\n{username},{password}," + "0"*59)
         return True
 
@@ -195,7 +195,7 @@ class Server:
         return "".join([str(int(e)) for e in l])
 
     def find_card(self, username):
-        with open("data.txt", "r+") as file:
+        with open("user_data.txt", "r+") as file:
             data = file.readlines()
             for info in data:
                 user, _, card = info.split(",")
@@ -204,14 +204,14 @@ class Server:
         return ""
 
     def add_card(self, username:str, card_num:str):
-        with open("data.txt", "r+") as file:
+        with open("user_data.txt", "r+") as file:
             data = file.readlines()
             for info in data:
                 user, pswd, card = info.split(",")
                 if user == username:
                     card_list = self.card_to_list(card)
                     card_list[card_num] = True
-                    self.replace_line("data.txt", data.index(info), f"{user},{pswd},{self.list_to_card(card_list)}")
+                    self.replace_line("user_data.txt", data.index(info), f"{user},{pswd},{self.list_to_card(card_list)}")
                     return
 
 class BattleHandler:
@@ -244,7 +244,7 @@ class BattleQueue:
 
 if __name__ == "__main__":
     # Server's IPv4 address, port
-    serverIP = "localhost"
+    serverIP = "192.168.1.2"
     port = 5555
 
     serverObj = Server(serverIP, port)
