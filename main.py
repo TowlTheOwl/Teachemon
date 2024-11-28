@@ -240,6 +240,10 @@ while running[0]:
                     if pointer_pos == 4:
                         pointer_pos = 1
                         battle_page = "00"
+            elif page == "Loading":
+                page = "Menu"
+                connection.send("exit queue".encode())
+                server_messages[2] = None
             elif page == "Claim":
                 if pointer_pos == 1:
                     page = "Menu"
@@ -406,13 +410,15 @@ while running[0]:
         draw_battle(screen, sbattle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
         
     elif page == "Loading":
-        pointer_on = False
+        pointer_on = True
+        pointer_x = 740
+        pointer_y = 550
         if server_messages[2] is not None and server_messages[2]:
             page = "Battle"
             timer = Timer(20, screen, running, base_font, (center_x, 50))
             timer_on = True
         else:
-            draw_loading(screen, search_glass, circle_x, circle_y)
+            draw_loading(screen, search_glass, circle_x, circle_y, button_exit)
             toUpdate = update_circle(circle_x, circle_y, circle_angle, circle_start, 50)
             circle_x, circle_y, circle_angle, circle_start = toUpdate
     
