@@ -126,8 +126,8 @@ timer = None
 connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connection.connect((server, port))
 running = [True]
-# login return, signup return, searching
-server_messages = [None, None, None]
+# login return, signup return, searching, match
+server_messages = [None, None, None, None]
 # username, password, cards?
 userdata = [username, password]
 
@@ -439,7 +439,14 @@ while running[0]:
             timer.draw()
             if timer.time == 0:
                 timer_on = False
-
+        
+        if server_messages[3] is not None:
+            if server_messages[3] == "DC":
+                display_box(screen, "OPPONENT DISCONNECTED", base_font, 3)
+                timer_on = False
+                timer = None
+                page = "Menu"
+                server_messages[3] = None
         
     elif page == "Binder":
         pointer_x = 750

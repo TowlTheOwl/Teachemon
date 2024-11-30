@@ -111,6 +111,9 @@ def handle_server_connection(conn:socket.socket, running, messages, userdata):
     while running[0]:
         try:
             msg = conn.recv(1024).decode()
+            if not msg:
+                print("Connection closed by the server.")
+                conn.close()
             print(f"Received: {msg}")
             if msg == "cc":
                 # server is checking if we are still connected
@@ -143,10 +146,13 @@ def handle_server_connection(conn:socket.socket, running, messages, userdata):
                     # server responded to signup request
                     messages[1] = info[1]
                 elif info[0] == "m":
-                    if info[1:] == "SEARCHING":
+                    message = info[1:]
+                    if message == "SEARCHING":
                         messages[2] = False
-                    elif info[1:] == "MATCH":
+                    elif message == "MATCH":
                         messages[2] = True
+                    elif message == "DC":
+                        messages[3] = "DC"
             
             else:
                 raise Exception(f"unexpected message, received {msg}")

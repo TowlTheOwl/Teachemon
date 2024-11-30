@@ -155,7 +155,7 @@ class Server:
                     raise e
         
     def handle_match(self, c1: socket.socket, c2: socket.socket):
-        match = BattleHandler(c1, c2)
+        match = BattleHandler(self, c1, c2)
 
     def find_login(self, username: str, password: str="") -> int:
         """
@@ -226,11 +226,24 @@ class Server:
                     return
 
 class BattleHandler:
-    def __init__(self, p1:socket.socket, p2:socket.socket):
+    def __init__(self, server:Server, p1:socket.socket, p2:socket.socket):
+        self.game_in_progress = True
+        self.server = server
         self.p1 = p1
         self.p2 = p2
         p1.send("smMATCH".encode())
         p2.send("smMATCH".encode())
+
+        threading.Thread(target=self.check_connected).start()
+    
+    def check_connected(self):
+        while self.server.run and self.game_in_progress:
+            if self.p1 not in self.server.logged_in_clients.values():
+                self.p2.send("smDC".encode())
+                self.game_in_progress = False
+            if self.p2 not in self.server.logged_in_clients.values():
+                self.p1.send("smDC".encode())
+                self.game_in_progress = False
 
 class BattleQueue:
     def __init__(self, server:Server):
