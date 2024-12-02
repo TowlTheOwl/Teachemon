@@ -32,9 +32,10 @@ def draw_login(screen: pygame.Surface, events, arrow_pos, username_tup, password
     password_tup[2].draw(screen, font)
 
 # DRAW MAGNIFYING GLASS
-def draw_loading(screen, search_glass, circle_x, circle_y):
+def draw_loading(screen, search_glass, circle_x, circle_y, exit_button):
     screen.fill("darkgrey")
     screen.blit(search_glass, (450+circle_x, 250+circle_y))
+    screen.blit(exit_button, (785,555))
 
 # DRAW MAIN MENU
 def draw_menu(screen, logo, battle, binder, claim, settings):

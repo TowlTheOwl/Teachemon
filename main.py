@@ -8,6 +8,7 @@ from utils.utils import *
 from utils.battle import *
 from utils.draw import *
 import threading
+import pickle   # helps send data types other than string over socket
 
 # Connect to server's IPv4 address
 server = "localhost"
@@ -119,11 +120,15 @@ text_signup_bg = text_signup.get_rect(width=399, height=60, center=signup_button
 
 pointer_pos = 1
 
+timer_on = False
+timer = None
+
 connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connection.connect((server, port))
 running = [True]
-# login return, signup return, searching
-server_messages = [None, None, None]
+# login return, signup return, searching, match
+server_messages = [None, None, None, None]
+# username, password, cards?
 userdata = [username, password]
 
 threading.Thread(target=handle_server_connection, args=(connection,running,server_messages,userdata)).start()
@@ -143,7 +148,7 @@ while running[0]:
     for event in events:
         if event.type == pygame.QUIT:
             connection.close()
-            run = False
+            running[0] = False
         if event.type == pygame.KEYDOWN: 
             key_pressed = True
             keys = pygame.key.get_pressed()
@@ -235,6 +240,10 @@ while running[0]:
                     if pointer_pos == 4:
                         pointer_pos = 1
                         battle_page = "00"
+            elif page == "Loading":
+                page = "Menu"
+                connection.send("exit queue".encode())
+                server_messages[2] = None
             elif page == "Claim":
                 if pointer_pos == 1:
                     page = "Menu"
@@ -401,11 +410,15 @@ while running[0]:
         draw_battle(screen, sbattle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
         
     elif page == "Loading":
-        pointer_on = False
+        pointer_on = True
+        pointer_x = 740
+        pointer_y = 550
         if server_messages[2] is not None and server_messages[2]:
             page = "Battle"
+            timer = Timer(20, screen, running, base_font, (center_x, 50))
+            timer_on = True
         else:
-            draw_loading(screen, search_glass, circle_x, circle_y)
+            draw_loading(screen, search_glass, circle_x, circle_y, button_exit)
             toUpdate = update_circle(circle_x, circle_y, circle_angle, circle_start, 50)
             circle_x, circle_y, circle_angle, circle_start = toUpdate
     
@@ -422,7 +435,18 @@ while running[0]:
             pointer_y = 530
 
         draw_battle(screen, battle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
-
+        if timer_on:
+            timer.draw()
+            if timer.time == 0:
+                timer_on = False
+        
+        if server_messages[3] is not None:
+            if server_messages[3] == "DC":
+                display_box(screen, "OPPONENT DISCONNECTED", base_font, 3)
+                timer_on = False
+                timer = None
+                page = "Menu"
+                server_messages[3] = None
         
     elif page == "Binder":
         pointer_x = 750

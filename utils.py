@@ -146,13 +146,10 @@ def handle_server_connection(conn:socket.socket, running, messages, userdata):
                     # server responded to signup request
                     messages[1] = info[1]
                 elif info[0] == "m":
-                    message = info[1:]
-                    if message == "SEARCHING":
+                    if info[1:] == "SEARCHING":
                         messages[2] = False
-                    elif message == "MATCH":
+                    elif info[1:] == "MATCH":
                         messages[2] = True
-                    elif message == "DC":
-                        messages[3] = "DC"
             
             else:
                 raise Exception(f"unexpected message, received {msg}")
