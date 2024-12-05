@@ -159,7 +159,7 @@ while running[0]:
                 if pointer_pos < 3:
                     pointer_pos += 2
             elif page == "Binder":
-                if highlight_y == 344:
+                if highlight_y == 339:
                     pointer_pos = 2
             else:
                 pointer_pos += 1
@@ -340,14 +340,14 @@ while running[0]:
                     else:
                         highlight_x = 95
 
-            elif event.key == pygame.K_UP and highlight_y >= 211:
+            elif event.key == pygame.K_UP and highlight_y >= 206:
                 if pointer_on:
-                    highlight_y = 344
+                    highlight_y = 339
                 else:
                     highlight_y -= 133
                     highlight_num -= 3
 
-            elif event.key == pygame.K_DOWN and highlight_y <= 211:
+            elif event.key == pygame.K_DOWN and highlight_y <= 206:
                 highlight_y += 133
                 highlight_num += 3
 
