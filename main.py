@@ -41,6 +41,7 @@ battle_00 = pygame.image.load("Images/battle_00.png")
 pointer = pygame.image.load("Images/pointer x5.png")
 search_glass = pygame.image.load("Images/Magnifying Glass.png")
 binder_highlight = pygame.image.load("Images/yellow border.png")
+back_card = pygame.image.load("Images/card_back.png")
 
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
@@ -50,8 +51,8 @@ lever = pygame.image.load("Images/test6.png")
 lever = pygame.transform.scale(lever, (65, 364))
 rotated_lever = pygame.transform.rotate(lever, -16)
 lever_rect = rotated_lever.get_rect(center=(480, 250))
-binder_highlight = pygame.transform.scale(binder_highlight, (180, 180))
-
+binder_highlight = pygame.transform.scale(binder_highlight, (222, 196))
+back_card = pygame.transform.scale(back_card, (90, 123))
 
 page = "Start"
 
@@ -86,8 +87,8 @@ rotating_backward = False
 rotating_forward = False 
 username_box = TypingBox((center_x, 150), 800, 100, 1)
 password_box = TypingBox((center_x, 350), 800, 100, 2)
-highlight_x = 115
-highlight_y = 78
+highlight_x = 95
+highlight_y = 73
 highlight_num = 0
 
 #dicionary of cards for binder. numbers will correlate to cards, and they are all false for now 
@@ -310,34 +311,34 @@ while running[0]:
         
         if page == "Binder" and event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RIGHT and not pointer_on:
-                if highlight_x == 305:
+                if highlight_x == 285:
                     highlight_x += 228
                     highlight_num += 7
                 else:
                     highlight_x += 95
                     highlight_num += 1
-                if highlight_x > 723:
+                if highlight_x > 708:
                     if right_page < 8:
-                        highlight_x = 115
+                        highlight_x = 95
                         right_page += 2
                         left_page += 2
                     else:
-                        highlight_x = 723
+                        highlight_x = 708
                 
             elif event.key == pygame.K_LEFT and not pointer_on:
-                if highlight_x == 533:
+                if highlight_x == 513:
                     highlight_x -= 228
                     highlight_num -= 7
                 else:
                     highlight_x -= 95
                     highlight_num -= 1
-                if highlight_x < 210:
+                if highlight_x < 180:
                     if right_page > 2:
                         right_page -= 2
                         left_page -= 2
-                        highlight_x = 723
+                        highlight_x = 703
                     else:
-                        highlight_x = 115
+                        highlight_x = 95
 
             elif event.key == pygame.K_UP and highlight_y >= 211:
                 if pointer_on:
@@ -481,7 +482,12 @@ while running[0]:
         else:
             pointer_on = False
         draw_binder(screen, left_page, right_page, resized_binder, base_font, button_exit)
+        screen.blit(back_card, (150, 101))
+        screen.blit(back_card, (245, 101))
+        screen.blit(back_card, (340, 101))
+
         screen.blit(binder_highlight, (highlight_x, highlight_y))
+
 
         # for future - making card bigger when pressed enter 
         #if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN and not pointer_pos == 2:
