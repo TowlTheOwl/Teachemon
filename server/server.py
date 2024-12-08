@@ -1,7 +1,7 @@
 import socket
 import threading
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 
 class Server:
@@ -14,7 +14,7 @@ class Server:
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind((self.ip, self.port))
         
-        self.connected_clients = {}
+        self.logged_in_clients: Dict[str, socket.socket] = {}
         self.keys_to_remove = []
         self.server.listen()
         print("Listening...")
@@ -28,7 +28,6 @@ class Server:
             print("Connected to:", addr)
             # runs the function handle_client, which will handle a single client.
             # threading is needed to we can listen to multiple clients, while another is being handled.
-            
             threading.Thread(target=self.handle_client, args=(client,)).start()
     
     def close(self):
@@ -37,12 +36,15 @@ class Server:
         closer.connect((self.ip, self.port))
         closer.recv(1024)
         closer.send(" ".encode())
+        closer.close()
+        for user in self.logged_in_clients:
+            self.logged_in_clients[user].close()
         self.server.close()
         quit()
     
     # def check_clients(self):
-    #     print(self.connected_clients)
-    #     for username, conn in self.connected_clients.items():
+    #     print(self.logged_in_clients)
+    #     for username, conn in self.logged_in_clients.items():
     #         try:
     #             conn.send("cc".encode())
             
@@ -57,7 +59,7 @@ class Server:
     #     if len(self.keys_to_remove) != 0:
     #         to_remove = self.keys_to_remove.copy()
     #         for key in to_remove:
-    #             del self.connected_clients[key]
+    #             del self.logged_in_clients[key]
     #         self.keys_to_remove = [keys for keys in self.keys_to_remove if keys not in to_remove]
     
     # def repeat_queue_check(self):
@@ -100,7 +102,7 @@ class Server:
                         found = str(self.find_login(username, password))
                         if found == "1":
                             user = username
-                            self.connected_clients[user] = c
+                            self.logged_in_clients[user] = c
                         c.send(f"sl{found}".encode())
                         print(f"sent: sl{found}")
 
@@ -114,11 +116,20 @@ class Server:
                             if self.create_login(username, password):
                                 to_send = 1
                                 user = username
-                                self.connected_clients[user] = c
+                                self.logged_in_clients[user] = c
                             else:
                                 to_send = 2
                         c.send(f"ss{to_send}".encode())
                         print(f"sent: ss{to_send}")
+
+                    elif msg == "exit queue":
+                        print("Attempting to remove from queue")
+                        if user is not None: # check user is logged in
+                            if self.battle_queue.remove_from_queue(c):
+                                print(f"Removed {c.getsockname()} from queue")
+                            else:
+                                print(f"Could not remove {c.getsockname()} from queue")
+                        
 
                     elif msg == "add card":
                         c.send("Enter card num".encode())
@@ -139,12 +150,12 @@ class Server:
                     c.close()
                     client_connected = False
                     if user is not None:
-                        del self.connected_clients[user]
+                        del self.logged_in_clients[user]
                 else:
                     raise e
         
     def handle_match(self, c1: socket.socket, c2: socket.socket):
-        match = BattleHandler(c1, c2)
+        match = BattleHandler(self, c1, c2)
 
     def find_login(self, username: str, password: str="") -> int:
         """
@@ -163,7 +174,7 @@ class Server:
                 info = info.split(",")
                 if info[0] == username:
                     if info[1] == password:
-                        if username in self.connected_clients:
+                        if username in self.logged_in_clients:
                             return 2
                         return 1
                     return 0
@@ -215,11 +226,24 @@ class Server:
                     return
 
 class BattleHandler:
-    def __init__(self, p1:socket.socket, p2:socket.socket):
+    def __init__(self, server:Server, p1:socket.socket, p2:socket.socket):
+        self.game_in_progress = True
+        self.server = server
         self.p1 = p1
         self.p2 = p2
         p1.send("smMATCH".encode())
         p2.send("smMATCH".encode())
+
+        threading.Thread(target=self.check_connected).start()
+    
+    def check_connected(self):
+        while self.server.run and self.game_in_progress:
+            if self.p1 not in self.server.logged_in_clients.values():
+                self.p2.send("smDC".encode())
+                self.game_in_progress = False
+            if self.p2 not in self.server.logged_in_clients.values():
+                self.p1.send("smDC".encode())
+                self.game_in_progress = False
 
 class BattleQueue:
     def __init__(self, server:Server):
@@ -229,7 +253,7 @@ class BattleQueue:
     def check_queue(self):
         for i in reversed(range(len(self.queue))):
             conn = self.queue[i][0]
-            if conn not in self.server.connected_clients.values():
+            if conn not in self.server.logged_in_clients.values():
                 self.queue.pop(i)
             
     def add_to_queue(self, conn:socket.socket, match_string:str):
@@ -241,6 +265,17 @@ class BattleQueue:
                 self.queue.pop(i)
                 return
         self.queue.append((conn, match_string))
+    
+    def remove_from_queue(self, conn: socket.socket):
+        """
+        return True if connection was in queue and was removed
+        return False if connection was not in queue; not removed
+        """
+        for i in range(len(self.queue)):
+            if self.queue[i][0] == conn:
+                self.queue.pop(i)
+                return True
+        return False
 
 if __name__ == "__main__":
     # Server's IPv4 address, port
