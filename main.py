@@ -8,7 +8,7 @@ from utils.utils import *
 from utils.battle import *
 from utils.draw import *
 import threading
-import pickle   # helps send data types other than string over socket
+import numpy as np
 
 # Connect to server's IPv4 address
 server = "localhost"
@@ -142,7 +142,8 @@ running = [True]
 # login return, signup return, searching, match
 server_messages = [None, None, None, None]
 # username, password, cards?
-userdata = [username, password, [1, 2, 3, 4, 5, 6, 7, 8, 9]]
+userdata = [username, password, []]
+owned_cards = userdata[2]
 selected_cards = [None, None, None, None]
 
 threading.Thread(target=handle_server_connection, args=(connection,running,server_messages,userdata)).start()
@@ -223,7 +224,7 @@ while running[0]:
                         if selected_cards[0] is None:
                             selected_cards[:] = userdata[2][:4]
                     else:
-                        display_box(screen, "AT LEAST 4 CARDS NEEDED", base_font, 3)
+                        display_box(screen, "AT LEAST 4 CARDS NEEDED", base_font, 1)
                         page = "Battle_Menu"
                 elif pointer_pos == 2:
                     page = "SBattle"
@@ -355,7 +356,9 @@ while running[0]:
 
         if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim":
             gacha = random.randint(0, 58)
-            dict[gacha] = True 
+            if gacha not in owned_cards:
+                owned_cards.insert(np.searchsorted(owned_cards, gacha), gacha)
+                connection.send(f"a{gacha}".encode())
         
             rotated_lever = pygame.transform.rotate(lever, -16)
             lever_rect = rotated_lever.get_rect(center=(480, 250))
@@ -394,6 +397,7 @@ while running[0]:
             response = server_messages[0]
             if response == "1":
                 page = "Menu"
+                connection.send("get cards".encode())
             elif response == "0":
                 display_box(screen, "INCORRECT PASSWORD", base_font, 3)
             elif response == "2":

@@ -8,6 +8,9 @@ class Server:
     def __init__(self, IP, port):
         self.run = True
 
+        with open("data.txt", "r") as file:
+            self.total_cards = int(file.readline().strip("\n").split(",")[2]) # number of total cards
+
         self.ip = IP
         self.port = port
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -129,19 +132,21 @@ class Server:
                                 print(f"Removed {c.getsockname()} from queue")
                             else:
                                 print(f"Could not remove {c.getsockname()} from queue")
-                        
-
-                    elif msg == "add card":
-                        c.send("Enter card num".encode())
-                        # should receive an int corresponding to user's new card
-                        username, card_num = c.recv(1024).decode().split(",")
-                        self.add_card(username, card_num)
-                        c.send("Success".encode())
 
                     elif msg == "get cards":
-                        c.send("Req:username".encode())
-                        username = c.recv(1024).decode()
-                        c.send(self.find_card(username))
+                        if user is None:
+                            print("NOT LOGGED IN BUT GET CARDS CALLED????")
+                        else:
+                            data = self.find_card(user)
+                            if data != "":
+                                c.send(f"sc{",".join([str(e) for e in self.card_to_list(data)])}".encode())
+                                print(f"Sent sc{",".join([str(e) for e in self.card_to_list(data)])}")
+                            else:
+                                print("USERNAME NOT FOUND WHEN SEARCHING FOR CARDS")
+                    
+                    elif msg[0] == "a":
+                        self.add_card(user, msg[1:])
+                            
             
             except Exception as e:
                 print(e)
@@ -168,7 +173,7 @@ class Server:
         1: match
         2: already logged in
         """
-        with open("user_data.txt", "r") as file:
+        with open("data.txt", "r") as file:
             data = file.readlines()
             for info in data:
                 info = info.split(",")
@@ -188,11 +193,11 @@ class Server:
         """
         if (self.find_login(username) == 0):
             return False
-        with open("user_data.txt", "a") as file:
+        with open("data.txt", "a") as file:
             file.write(f"\n{username},{password}," + "0"*59)
         return True
 
-    def replace_line(file_name, line_num, text):
+    def replace_line(self, file_name, line_num, text):
         lines = open(file_name, 'r').readlines()
         lines[line_num] = text
         out = open(file_name, 'w')
@@ -200,13 +205,13 @@ class Server:
         out.close()
 
     def card_to_list(self, c):
-        return [bool(int(e)) for e in list(c)]
+        return [i+1 for i in range(len(c)) if c[i] == "1"]
 
     def list_to_card(self, l):
-        return "".join([str(int(e)) for e in l])
+        return "".join(["1" if i+1 in l else "0" for i in range(self.total_cards)])
 
     def find_card(self, username):
-        with open("user_data.txt", "r+") as file:
+        with open("data.txt", "r+") as file:
             data = file.readlines()
             for info in data:
                 user, _, card = info.split(",")
@@ -215,14 +220,16 @@ class Server:
         return ""
 
     def add_card(self, username:str, card_num:str):
-        with open("user_data.txt", "r+") as file:
+        with open("data.txt", "r+") as file:
             data = file.readlines()
-            for info in data:
-                user, pswd, card = info.split(",")
+            for index in range(len(data)):
+                user, pswd, card = data[index].split(",")
                 if user == username:
                     card_list = self.card_to_list(card)
-                    card_list[card_num] = True
-                    self.replace_line("user_data.txt", data.index(info), f"{user},{pswd},{self.list_to_card(card_list)}")
+                    if card_num not in card_list:
+                        card_list.append(int(card_num))
+                    self.replace_line("data.txt", index, f"{user},{pswd},{self.list_to_card(card_list)}")
+                    print(f"Replaced Line {index} with {user},{pswd},{self.list_to_card(card_list)}")
                     return
 
 class BattleHandler:

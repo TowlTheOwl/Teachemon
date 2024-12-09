@@ -105,7 +105,7 @@ def check_received_data(received, expecting):
 
 def handle_server_connection(conn:socket.socket, running, messages, userdata):
     """
-    userdata: [username, password]
+    userdata: [username, password, card: list]
     messages: [login return, signup return, queue status]
     """
     while running[0]:
@@ -146,6 +146,7 @@ def handle_server_connection(conn:socket.socket, running, messages, userdata):
                     # server responded to signup request
                     messages[1] = info[1]
                 elif info[0] == "m":
+                    # server is sending match info
                     message = info[1:]
                     if message == "SEARCHING":
                         messages[2] = False
@@ -153,7 +154,10 @@ def handle_server_connection(conn:socket.socket, running, messages, userdata):
                         messages[2] = True
                     elif message == "DC":
                         messages[3] = "DC"
-            
+                elif info[0] == "c":
+                    # server sent card info
+                    message = info[1:]
+                    userdata[2][:] = [int(e) for e in message.split(",")]
             else:
                 raise Exception(f"unexpected message, received {msg}")
         except Exception as e:
