@@ -86,10 +86,18 @@ username_box = TypingBox((center_x, 150), 800, 100, 1)
 password_box = TypingBox((center_x, 350), 800, 100, 2)
 
 
-#dicionary of cards for binder. numbers will correlate to cards, and they are all false for now 
-dict = {}
+#dicionary of cards for binder, key = card#, value = image. array cards_owned stores card# of cards owned
+card_images = {}
+cards_owned = [0, 1, 2, 3, 4, 7, 10, 15, 26, 32, 38, 42, 45, 52]
+card_back = pygame.transform.scale(pygame.image.load("Images/card_back.png"), (90, 123))
 for i in range(59):
-    dict[i] = False
+    if i < 10: 
+        card = pygame.transform.scale(pygame.image.load("Images/card_" + str(i) + ".png"), (90, 123))
+    #temporary placeholder for the rest of the card b/c too lazy to load in rn
+    else:
+        card = pygame.transform.scale(pygame.image.load("Images/card_placeholder.png"), (90, 123))
+
+    card_images[i] = card
 
 font = pygame.font.Font(None, 70)
 # Font Setup
@@ -285,7 +293,7 @@ while running[0]:
                     pointer_pos += 1
             elif page == "Binder":
                 if pointer_pos == 1:
-                    if left_page > 0 and right_page < 7:
+                    if left_page > 0 and right_page < 6:
                         left_page += 2
                         right_page += 2
 
@@ -431,7 +439,7 @@ while running[0]:
             pointer_on = True
         else:
             pointer_on = False
-        draw_binder(screen, left_page, right_page, resized_binder, font, button_exit)
+        draw_binder(screen, left_page, right_page, resized_binder, font, card_images, cards_owned, card_back, button_exit)
 
     elif page == "Claim":
         pointer_on = True
