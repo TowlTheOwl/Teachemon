@@ -303,7 +303,7 @@ while running[0]:
             rotating_forward = True
             rotating_backward = False
 
-        
+        #new binder with highlight 
         if page == "Binder" and event.type == pygame.KEYDOWN:
             if event.key == pygame.K_RIGHT and not pointer_on:
                 if highlight_x == 285:
@@ -478,10 +478,6 @@ while running[0]:
         else:
             pointer_on = False
         draw_binder(screen, left_page, right_page, resized_binder, base_font, button_exit)
-        screen.blit(placeholder_card, (150, 101))
-        screen.blit(placeholder_card, (245, 101))
-        screen.blit(placeholder_card, (340, 101))
-
         screen.blit(binder_highlight, (highlight_x, highlight_y))
 
 
