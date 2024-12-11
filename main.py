@@ -384,7 +384,7 @@ while running[0]:
 
 
         if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim":
-            gacha = random.randint(0, 58)
+            gacha = random.randint(1, 59)
             if gacha not in cards_owned:
                 cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
                 connection.send(f"a{gacha}".encode())
