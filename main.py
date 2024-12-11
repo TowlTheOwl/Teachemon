@@ -40,7 +40,7 @@ battle_main = pygame.image.load("Images/battle_main.png")
 battle_00 = pygame.image.load("Images/battle_00.png")
 pointer = pygame.image.load("Images/pointer x5.png")
 search_glass = pygame.image.load("Images/Magnifying Glass.png")
-binder_highlight = pygame.image.load("Images/yellow border.png")
+binder_highlight = pygame.image.load("Images/yellow_border.png")
 placeholder_card = pygame.image.load("Images/placeholder.png")
 
 binder = pygame.image.load("Images/binder2.png")
@@ -165,10 +165,9 @@ while running[0]:
                 if pointer_pos < 3:
                     pointer_pos += 2
             elif page == "Binder":
-                if highlight_y == 339:
+                if highlight_num%9//3 == 2:
                     pointer_pos = 2
-                elif highlight_y <= 206:
-                    highlight_y += 133
+                elif highlight_num%9//3 < 2:
                     highlight_num += 3
             else:
                 pointer_pos += 1
@@ -179,14 +178,10 @@ while running[0]:
                 if pointer_pos > 2:
                     pointer_pos -= 2
             elif page == "Binder":
-                pointer_pos = 1
-
-                if highlight_y >= 206:
-                    if pointer_on:
-                        highlight_y = 339
-                    else:
-                        highlight_y -= 133
-                        highlight_num -= 3
+                if pointer_pos == 2:
+                    pointer_pos = 1
+                elif highlight_num%9//3 > 0:
+                    highlight_num -= 3
             else:
                 if pointer_pos > 1:
                     pointer_pos -= 1
@@ -295,20 +290,15 @@ while running[0]:
                 if pointer_pos % 2 == 0:
                     pointer_pos -= 1
             elif page == "Binder":
-                if not pointer_on:
-                    if highlight_x == 513:
-                        highlight_x -= 228
-                        highlight_num -= 7
-                    else:
-                        highlight_x -= 95
+                if pointer_pos == 1:
+                    if highlight_num % 9 % 3 > 0:
                         highlight_num -= 1
-                    if highlight_x < 180:
-                        if right_page > 2:
-                            right_page -= 2
-                            left_page -= 2
-                            highlight_x = 703
-                        else:
-                            highlight_x = 95
+                    elif highlight_num // 9 == 1:
+                        highlight_num -= 7
+                    elif right_page > 2:
+                        right_page -= 2
+                        left_page -= 2
+                        highlight_num = 11 + highlight_num
     
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
@@ -316,20 +306,15 @@ while running[0]:
                 if pointer_pos % 2 == 1:
                     pointer_pos += 1
             elif page == "Binder":
-                if not pointer_on:
-                    if highlight_x == 285:
-                        highlight_x += 228
-                        highlight_num += 7
-                    else:
-                        highlight_x += 95
+                if pointer_pos == 1:
+                    if highlight_num % 9 % 3 < 2:
                         highlight_num += 1
-                    if highlight_x >= 708:
-                        if right_page < 8:
-                            highlight_x = 95
-                            right_page += 2
-                            left_page += 2
-                        else:
-                            highlight_x = 703
+                    elif highlight_num // 9 == 0:
+                        highlight_num += 7
+                    elif right_page < 8:
+                        right_page += 2
+                        left_page += 2
+                        highlight_num = highlight_num % 9 - 2
 
 
         if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim":
@@ -473,8 +458,12 @@ while running[0]:
             pointer_on = True
         else:
             pointer_on = False
-        draw_binder(screen, left_page, right_page, resized_binder, base_font, button_exit)
-        screen.blit(binder_highlight, (highlight_x, highlight_y))
+        draw_binder(screen, left_page, right_page, resized_binder, font, card_images, cards_owned, card_back, button_exit)
+
+        if highlight_num < 9:
+            screen.blit(binder_highlight, (150 + highlight_num%3*95, 100 + highlight_num//3*135))
+        else:
+            screen.blit(binder_highlight, (570 + (highlight_num-9)%3*95, 100 + (highlight_num-9)//3*135))
 
 
         # for future - making card bigger when pressed enter 
