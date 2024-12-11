@@ -32,9 +32,10 @@ def draw_login(screen: pygame.Surface, events, arrow_pos, username_tup, password
     password_tup[2].draw(screen, font)
 
 # DRAW MAGNIFYING GLASS
-def draw_loading(screen, search_glass, circle_x, circle_y):
+def draw_loading(screen, search_glass, circle_x, circle_y, exit_button):
     screen.fill("darkgrey")
     screen.blit(search_glass, (450+circle_x, 250+circle_y))
+    screen.blit(exit_button, (785,555))
 
 # DRAW MAIN MENU
 def draw_menu(screen, logo, battle, binder, claim, settings):
@@ -81,32 +82,29 @@ def draw_battle(screen, page, player_img, enemy_img, font, battle_base, battle_b
 #     if battle_page == "Main":
 #         screen.blit(battle_main, (0, 0))
 
-def draw_binder(screen, left, right, binder, font, button_exit):
+def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit):
     screen.fill("grey")
     screen.blit(binder, (0, 0))
-    x = 170
-    y = 0
-    for i in range((left-1)*9, left*9):
-        if i % 3 == 0:
-            y += 130
-            x = 170
+    x = 150
+    y = 100
+   
+    for i in range(18):
+        
+        if (i + 18 * int(left / 2)) in cards_owned:
+            screen.blit(card_images[i + 18 * int(left / 2)], (x, y))
         else:
-            x += 100
-        if i <= 58:
-            screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
+            screen.blit(card_back, (x, y))
+        
+        if (i + 1) % 9 == 0:
+            x = 475
+            y = 100
+        elif (i + 1) % 3 == 0:
+            y += 135
+            x -= 285
+
+        x += 95
+
     screen.blit(font.render(str(left), True, (0, 0, 0)), (110, 430))
-    x = 580
-    y = 0
-    for i in range((right - 1) * 9, right * 9):
-        if i % 3 == 0:
-            y += 130
-            x = 580
-        else:
-            x += 100
-
-        if i <= 58:
-            screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
-
     screen.blit(font.render(str(right), True, (0, 0, 0)), (860, 430))
     screen.blit(button_exit, (785,555))
 
@@ -124,3 +122,50 @@ def draw_settings(screen, button_credits, button_exit):
     screen.fill("grey")
     screen.blit(button_credits, (315,112))
     screen.blit(button_exit, (398,182))
+
+def draw_choose_your_team(screen:pygame.Surface, button_exit, text_cyt, cyt_rect, button_go_text, button_go_bg, button_go_rect, selected_cards, font):
+    screen.fill("grey")
+    pygame.draw.rect(screen, (150, 150, 150), button_go_bg, border_radius=5)
+    screen.blit(button_go_text, button_go_rect)
+    screen.blit(button_exit, (785,555))
+    screen.blit(text_cyt, cyt_rect)
+    for i in range(4):
+        pygame.draw.rect(screen, (20, 20, 20), (145+i*200, 105, 110, 150))
+        draw_text(screen, str(selected_cards[i]), font, (255, 255, 255), (200+i*200, 180))
+
+def draw_card_wheel(screen, cards, selected_cards, pointer, font:pygame.font.Font, font_small):
+    len_cards = len(cards)
+    cards_to_draw = [cards[pointer+i] if i>=-pointer and i+pointer<len_cards else None for i in (-2, -1, 0, 1, 2)]
+    pygame.draw.rect(screen, (0, 0, 0), ((445, 315),(110, 150)))    # draw center card
+    card = cards_to_draw[2]
+    color = (255, 255, 255)
+    if card in selected_cards:
+        color = (255, 100, 100)
+    draw_text(screen, str(card), font, color, (500, 390))
+
+    y = 352
+    card_size = (55, 75)
+    
+    # draw left cards
+    for i in range(2):
+        card = cards_to_draw[i]
+        if card is not None:
+            color = (255, 255, 255)
+            if card in selected_cards:
+                color = (255, 100, 100)
+            pygame.draw.rect(screen, (0, 0, 0), ((255+(i*95),y),card_size))
+            draw_text(screen, str(card), font_small, color, (282+(i*95), 390))
+    # draw right cards
+    for i in range(2):
+        card = cards_to_draw[i+3]
+        if card is not None:
+            color = (255, 255, 255)
+            if card in selected_cards:
+                color = (255, 100, 100)
+            pygame.draw.rect(screen, (0, 0, 0), ((595+(i*95),y),card_size))
+            draw_text(screen, str(card), font_small, color, (622+(i*95), 390))
+
+def draw_text(screen:pygame.Surface, text:str, font:pygame.font.Font, color:tuple, pos:tuple):
+    render = font.render(text, True, color)
+    render_rect = render.get_rect(center=pos)
+    screen.blit(render, render_rect)
