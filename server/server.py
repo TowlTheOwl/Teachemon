@@ -228,7 +228,7 @@ class Server:
                     card_list = self.card_to_list(card)
                     if card_num not in card_list:
                         card_list.append(int(card_num))
-                    self.replace_line("data.txt", index, f"{user},{pswd},{self.list_to_card(card_list)}")
+                    self.replace_line("data.txt", index, f"{user},{pswd},{self.list_to_card(card_list)}\n")
                     print(f"Replaced Line {index} with {user},{pswd},{self.list_to_card(card_list)}")
                     return
 
