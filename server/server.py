@@ -139,8 +139,8 @@ class Server:
                         else:
                             data = self.find_card(user)
                             if data != "":
-                                c.send(f"sc{",".join([str(e) for e in self.card_to_list(data)])}".encode())
-                                print(f"Sent sc{",".join([str(e) for e in self.card_to_list(data)])}")
+                                c.send(f"sc{','.join([str(e) for e in self.card_to_list(data)])}".encode())
+                                print(f"Sent sc{','.join([str(e) for e in self.card_to_list(data)])}")
                             else:
                                 print("USERNAME NOT FOUND WHEN SEARCHING FOR CARDS")
                     
