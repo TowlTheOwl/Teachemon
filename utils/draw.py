@@ -82,32 +82,29 @@ def draw_battle(screen, page, player_img, enemy_img, font, battle_base, battle_b
 #     if battle_page == "Main":
 #         screen.blit(battle_main, (0, 0))
 
-def draw_binder(screen, left, right, binder, font, button_exit):
+def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit):
     screen.fill("grey")
     screen.blit(binder, (0, 0))
-    x = 170
-    y = 0
-    for i in range((left-1)*9, left*9):
-        if i % 3 == 0:
-            y += 130
-            x = 170
+    x = 150
+    y = 100
+   
+    for i in range(18):
+        
+        if (i + 18 * int(left / 2)) in cards_owned:
+            screen.blit(card_images[i + 18 * int(left / 2)], (x, y))
         else:
-            x += 100
-        if i <= 58:
-            screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
+            screen.blit(card_back, (x, y))
+        
+        if (i + 1) % 9 == 0:
+            x = 475
+            y = 100
+        elif (i + 1) % 3 == 0:
+            y += 135
+            x -= 285
+
+        x += 95
+
     screen.blit(font.render(str(left), True, (0, 0, 0)), (110, 430))
-    x = 580
-    y = 0
-    for i in range((right - 1) * 9, right * 9):
-        if i % 3 == 0:
-            y += 130
-            x = 580
-        else:
-            x += 100
-
-        if i <= 58:
-            screen.blit(font.render(str(i), True, (0, 0, 0)), (x, y))
-
     screen.blit(font.render(str(right), True, (0, 0, 0)), (860, 430))
     screen.blit(button_exit, (785,555))
 

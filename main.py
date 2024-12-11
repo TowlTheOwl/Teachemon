@@ -43,6 +43,9 @@ pointer = pygame.image.load("Images/pointer x5.png")
 pointer_up = pygame.transform.rotate(pointer, 90)
 pointer_down = pygame.transform.rotate(pointer, 270)
 search_glass = pygame.image.load("Images/Magnifying Glass.png")
+binder_highlight = pygame.image.load("Images/yellow_border.png")
+placeholder_card = pygame.image.load("Images/placeholder.png")
+
 
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
@@ -87,12 +90,21 @@ rotating_backward = False
 rotating_forward = False 
 username_box = TypingBox((center_x, 150), 800, 100, 1)
 password_box = TypingBox((center_x, 350), 800, 100, 2)
+highlight_x = 95
+highlight_y = 73
+highlight_num = 0
 
-
-#dicionary of cards for binder. numbers will correlate to cards, and they are all false for now 
-dict = {}
+#dicionary of cards for binder, key = card#, value = image. array cards_owned stores card# of cards owned
+card_images = {}
+card_back = pygame.transform.scale(pygame.image.load("Images/card_back.png"), (90, 123))
 for i in range(59):
-    dict[i] = False
+    if i < 10: 
+        card = pygame.transform.scale(pygame.image.load("Images/card_" + str(i) + ".png"), (90, 123))
+    #temporary placeholder for the rest of the card b/c too lazy to load in rn
+    else:
+        card = pygame.transform.scale(pygame.image.load("Images/card_placeholder.png"), (90, 123))
+
+    card_images[i] = card
 
 font = pygame.font.Font(None, 70)
 # Font Setup
@@ -143,7 +155,7 @@ running = [True]
 server_messages = [None, None, None, None]
 # username, password, cards?
 userdata = [username, password, []]
-owned_cards = userdata[2]
+cards_owned = userdata[2]
 selected_cards = [None, None, None, None]
 
 threading.Thread(target=handle_server_connection, args=(connection,running,server_messages,userdata)).start()
@@ -174,7 +186,10 @@ while running[0]:
                 if pointer_pos < 3:
                     pointer_pos += 2
             elif page == "Binder":
-                pointer_pos = 2
+                if highlight_num%9//3 == 2:
+                    pointer_pos = 2
+                elif highlight_num%9//3 < 2:
+                    highlight_num += 3
             elif page == "Choose Card":
                 if pointer_pos <=4:
                     pointer_pos = 5
@@ -189,7 +204,10 @@ while running[0]:
                 if pointer_pos > 2:
                     pointer_pos -= 2
             elif page == "Binder":
-                pointer_pos = 1
+                if pointer_pos == 2:
+                    pointer_pos = 1
+                elif highlight_num%9//3 > 0:
+                    highlight_num -= 3
             elif page == "Choose Card":
                 if pointer_pos == 5:
                     pointer_pos = 1
@@ -328,9 +346,14 @@ while running[0]:
                     pointer_pos -= 1
             elif page == "Binder":
                 if pointer_pos == 1:
-                    if left_page >= 3 and right_page <= 8:
-                        left_page -= 2
+                    if highlight_num % 9 % 3 > 0:
+                        highlight_num -= 1
+                    elif highlight_num // 9 == 1:
+                        highlight_num -= 7
+                    elif right_page > 2:
                         right_page -= 2
+                        left_page -= 2
+                        highlight_num = 11 + highlight_num
             elif page == "Choose Card":
                 if pointer_pos <= 4 and pointer_pos > 1:
                     pointer_pos -= 1
@@ -344,9 +367,15 @@ while running[0]:
                     pointer_pos += 1
             elif page == "Binder":
                 if pointer_pos == 1:
-                    if left_page > 0 and right_page < 7:
-                        left_page += 2
+                    if highlight_num % 9 % 3 < 2:
+                        highlight_num += 1
+                    elif highlight_num // 9 == 0:
+                        highlight_num += 7
+                    elif right_page < 8:
                         right_page += 2
+                        left_page += 2
+                        highlight_num = highlight_num % 9 - 2
+
             elif page == "Choose Card":
                 if pointer_pos < 4:
                     pointer_pos += 1
@@ -356,8 +385,8 @@ while running[0]:
 
         if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim":
             gacha = random.randint(0, 58)
-            if gacha not in owned_cards:
-                owned_cards.insert(np.searchsorted(owned_cards, gacha), gacha)
+            if gacha not in cards_owned:
+                cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
                 connection.send(f"a{gacha}".encode())
         
             rotated_lever = pygame.transform.rotate(lever, -16)
@@ -542,7 +571,17 @@ while running[0]:
             pointer_on = True
         else:
             pointer_on = False
-        draw_binder(screen, left_page, right_page, resized_binder, font, button_exit)
+        draw_binder(screen, left_page, right_page, resized_binder, font, card_images, cards_owned, card_back, button_exit)
+
+        if highlight_num < 9:
+            screen.blit(binder_highlight, (150 + highlight_num%3*95, 100 + highlight_num//3*135))
+        else:
+            screen.blit(binder_highlight, (570 + (highlight_num-9)%3*95, 100 + (highlight_num-9)//3*135))
+
+        # for future - making card bigger when pressed enter 
+        #if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN and not pointer_pos == 2:
+            #screen.blit(base_font.render(str(highlight_num), True, (0, 0, 0)), (300, 300))
+
 
     elif page == "Claim":
         pointer_on = True
