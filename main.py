@@ -259,6 +259,7 @@ while running[0]:
                 elif pointer_pos == 3:
                     page = "Claim"
                     dispenser_frame = 0
+                    action = 0
                 elif pointer_pos == 4:
                     page = "Settings"
             elif page == "Battle_Menu":
