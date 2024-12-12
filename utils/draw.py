@@ -89,9 +89,9 @@ def draw_binder(screen, left, right, binder, font, card_images, cards_owned, car
     y = 100
    
     for i in range(18):
-        
-        if (i + 18 * int(left / 2)) in cards_owned:
-            screen.blit(card_images[i + 18 * int(left / 2)], (x, y))
+        card_num = (i+1 + 18 * int(left / 2))
+        if card_num in cards_owned:
+            screen.blit(card_images[card_num], (x, y))
         else:
             screen.blit(card_back, (x, y))
         

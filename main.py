@@ -134,7 +134,7 @@ for i in range(59):
     else:
         card = pygame.transform.scale(pygame.image.load("Images/card_placeholder.png"), (90, 123))
 
-    card_images[i] = card
+    card_images[i+1] = card
 
 font = pygame.font.Font(None, 70)
 # Font Setup
@@ -423,6 +423,7 @@ while running[0]:
         
             rotated_lever = pygame.transform.rotate(lever, angle)
             lever_rect = rotated_lever.get_rect(center=(480, 250))
+            angle = min_angle
             
             # Start rotation forward when the mouse is clicked
             dispensing = True
@@ -641,17 +642,15 @@ while running[0]:
                 if angle <= max_angle:
                     angle = max_angle
                     rotating_forward = False
-                rotated_lever = pygame.transform.rotate(lever, angle)
             else:
                 angle += rotation_speed
                 if angle >= min_angle:
                     angle = min_angle
                     dispensing = False
-                rotated_lever = pygame.transform.rotate(lever, angle)
         else:
             frame = 0
-            
         
+        rotated_lever = pygame.transform.rotate(lever, angle)
         lever_rect = rotated_lever.get_rect(center=pivot_point)
         draw_rotating_lever(screen, rotated_lever, lever_rect)    
         # Draw everything on screen
