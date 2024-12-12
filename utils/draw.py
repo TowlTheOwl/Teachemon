@@ -108,10 +108,10 @@ def draw_binder(screen, left, right, binder, font, card_images, cards_owned, car
     screen.blit(font.render(str(right), True, (0, 0, 0)), (860, 430))
     screen.blit(button_exit, (785,555))
 
-def draw_claim(screen, button_exit, dispenser, font, coins, gacha):
+def draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, action):
     screen.fill("grey")
     screen.blit(button_exit, (785,555))
-    screen.blit(dispenser, (200,10))
+    screen.blit(animation_list[action][frame], (260,50))
     screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
     screen.blit(font.render(str(gacha), True, (0, 0, 0)), (480, 250))
 
