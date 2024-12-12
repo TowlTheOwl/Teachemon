@@ -78,7 +78,6 @@ pointer_on = True
 pointer_x = 55
 pointer_y = 257
 left_page = 1
-right_page = 2
 coins = 0
 circle_x = 0
 circle_y = 0
@@ -261,6 +260,7 @@ while running[0]:
                     page = "Battle_Menu"
                 elif pointer_pos == 2:
                     page = "Binder"
+                    left_page = 1
                 elif pointer_pos == 3:
                     page = "Claim"
                     dispensing = False
@@ -382,8 +382,7 @@ while running[0]:
                         highlight_num -= 1
                     elif highlight_num // 9 == 1:
                         highlight_num -= 7
-                    elif right_page > 2:
-                        right_page -= 2
+                    elif left_page + 1 > 2:
                         left_page -= 2
                         highlight_num = 11 + highlight_num
             elif page == "Choose Card":
@@ -403,8 +402,7 @@ while running[0]:
                         highlight_num += 1
                     elif highlight_num // 9 == 0:
                         highlight_num += 7
-                    elif right_page < 8:
-                        right_page += 2
+                    elif left_page + 1 < 8:
                         left_page += 2
                         highlight_num = highlight_num % 9 - 2
 
@@ -609,7 +607,7 @@ while running[0]:
             pointer_on = True
         else:
             pointer_on = False
-        draw_binder(screen, left_page, right_page, resized_binder, font, card_images, cards_owned, card_back, button_exit)
+        draw_binder(screen, left_page, left_page + 1, resized_binder, font, card_images, cards_owned, card_back, button_exit)
 
         if highlight_num < 9:
             screen.blit(binder_highlight, (150 + highlight_num%3*95, 100 + highlight_num//3*135))
