@@ -49,8 +49,9 @@ placeholder_card = pygame.image.load("Images/placeholder.png")
 
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
-dispenser = pygame.image.load("Images/dispenser.png")
+dispenser = pygame.image.load("Images/draft dispense.png")
 resized_dispenser = pygame.transform.scale(dispenser, (600, 600))
+sprite_sheet = pygame.image.load("Images/dispense sheet.png").convert_alpha()
 lever = pygame.image.load("Images/test6.png")
 lever = pygame.transform.scale(lever, (65, 364))
 rotated_lever = pygame.transform.rotate(lever, -16)
@@ -84,15 +85,44 @@ circle_y = 0
 circle_angle = 0
 circle_start = True
 gacha = ""
-max_angle = 90
+min_angle = -16
+angle = min_angle
+max_angle = -90
 clock = pygame.time.Clock()
-rotating_backward = False
-rotating_forward = False 
+rotating_forward = True
+dispensing = False
 username_box = TypingBox((center_x, 150), 800, 100, 1)
 password_box = TypingBox((center_x, 350), 800, 100, 2)
 highlight_x = 95
 highlight_y = 73
 highlight_num = 0
+
+#sprite animation for card dispenser
+back = (0,0,0)
+def get_image(sheet, frame, width, height, scale, color):
+    image = pygame.Surface((width, height)).convert_alpha()
+    image.blit(sheet, (0,0), ((frame * width), 0, width, height))
+    image.blit(sheet, (0,0), ((frame * width), 0, width, height))
+    image = pygame.transform.scale(image, (width * scale, height * scale))
+    image.set_colorkey(color)
+
+    return image
+
+#create animation list
+animation_list = []
+animation_steps = [1, 8]
+action = 0
+last_update = pygame.time.get_ticks()
+anim_cooldown = 250
+frame = 0
+step = 0
+
+for animation in animation_steps:
+    temp_img_list = []
+    for _ in range(animation):
+        temp_img_list.append(get_image(sprite_sheet, step, 320, 320, 1.75, back))
+        step += 1
+    animation_list.append(temp_img_list)
 
 #dicionary of cards for binder, key = card#, value = image. array cards_owned stores card# of cards owned
 card_images = {}
@@ -233,6 +263,8 @@ while running[0]:
                     page = "Binder"
                 elif pointer_pos == 3:
                     page = "Claim"
+                    dispensing = False
+                    angle = min_angle
                 elif pointer_pos == 4:
                     page = "Settings"
             elif page == "Battle_Menu":
@@ -389,12 +421,17 @@ while running[0]:
                 cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
                 connection.send(f"a{gacha}".encode())
         
-            rotated_lever = pygame.transform.rotate(lever, -16)
+            rotated_lever = pygame.transform.rotate(lever, angle)
             lever_rect = rotated_lever.get_rect(center=(480, 250))
-
+            
             # Start rotation forward when the mouse is clicked
+            dispensing = True
             rotating_forward = True
-            rotating_backward = False
+
+            if action == 1:
+                action -= 1
+            action += 1
+            frame = 0
 
     ### HANDLE SERVER MESSAGES
     
@@ -588,23 +625,33 @@ while running[0]:
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
-        draw_claim(screen, button_exit, resized_dispenser, font, coins, gacha)
-        # Update rotation angle based on direction
-        if rotating_forward:
-            angle += rotation_speed
-            if angle >= max_angle:
-                angle = max_angle
-                rotating_forward = False
-                rotating_backward = True
-            rotated_lever = pygame.transform.rotate(rotated_lever, -2)
-        elif rotating_backward:
-            angle -= rotation_speed
-            if angle <= 0:
-                angle = 0
-                rotating_backward = False
-            rotated_lever = pygame.transform.rotate(rotated_lever, 2)
+        draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, action)
+        if dispensing:
+            #update animation
+            current_time = pygame.time.get_ticks()
+            if current_time - last_update >= anim_cooldown:
+                frame += 1
+                last_update = current_time
+                if frame >= len(animation_list[action]):
+                    frame = 0
+
+            # Update rotation angle based on direction
+            if rotating_forward:
+                angle -= rotation_speed
+                if angle <= max_angle:
+                    angle = max_angle
+                    rotating_forward = False
+                rotated_lever = pygame.transform.rotate(lever, angle)
+            else:
+                angle += rotation_speed
+                if angle >= min_angle:
+                    angle = min_angle
+                    dispensing = False
+                rotated_lever = pygame.transform.rotate(lever, angle)
+        else:
+            frame = 0
             
-        #if rotating_forward or rotating_backward:
+        
         lever_rect = rotated_lever.get_rect(center=pivot_point)
         draw_rotating_lever(screen, rotated_lever, lever_rect)    
         # Draw everything on screen
