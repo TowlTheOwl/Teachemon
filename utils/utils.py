@@ -105,15 +105,12 @@ def check_received_data(received, expecting):
 
 def handle_server_connection(conn:socket.socket, running, messages, userdata):
     """
-    userdata: [username, password, card: list]
+    userdata: [username, password]
     messages: [login return, signup return, queue status]
     """
     while running[0]:
         try:
             msg = conn.recv(1024).decode()
-            if not msg:
-                print("Connection closed by the server.")
-                conn.close()
             print(f"Received: {msg}")
             if msg == "cc":
                 # server is checking if we are still connected
@@ -146,18 +143,11 @@ def handle_server_connection(conn:socket.socket, running, messages, userdata):
                     # server responded to signup request
                     messages[1] = info[1]
                 elif info[0] == "m":
-                    # server is sending match info
-                    message = info[1:]
-                    if message == "SEARCHING":
+                    if info[1:] == "SEARCHING":
                         messages[2] = False
-                    elif message == "MATCH":
+                    elif info[1:] == "MATCH":
                         messages[2] = True
-                    elif message == "DC":
-                        messages[3] = "DC"
-                elif info[0] == "c":
-                    # server sent card info
-                    message = info[1:]
-                    userdata[2][:] = [int(e) for e in message.split(",")]
+            
             else:
                 raise Exception(f"unexpected message, received {msg}")
         except Exception as e:

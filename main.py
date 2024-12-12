@@ -8,7 +8,6 @@ from utils.utils import *
 from utils.battle import *
 from utils.draw import *
 import threading
-import numpy as np
 
 # Connect to server's IPv4 address
 server = "localhost"
@@ -40,17 +39,13 @@ button_exit = pygame.image.load("Images/exit x5.png")
 battle_main = pygame.image.load("Images/battle_main.png")
 battle_00 = pygame.image.load("Images/battle_00.png")
 pointer = pygame.image.load("Images/pointer x5.png")
-pointer_up = pygame.transform.rotate(pointer, 90)
-pointer_down = pygame.transform.rotate(pointer, 270)
 search_glass = pygame.image.load("Images/Magnifying Glass.png")
-binder_highlight = pygame.image.load("Images/yellow_border.png")
-placeholder_card = pygame.image.load("Images/placeholder.png")
-
 
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
-dispenser = pygame.image.load("Images/dispenser.png")
+dispenser = pygame.image.load("Images/draft dispense.png")
 resized_dispenser = pygame.transform.scale(dispenser, (600, 600))
+sprite_sheet = pygame.image.load("Images/dispense sheet.png").convert_alpha()
 lever = pygame.image.load("Images/test6.png")
 lever = pygame.transform.scale(lever, (65, 364))
 rotated_lever = pygame.transform.rotate(lever, -16)
@@ -90,26 +85,45 @@ rotating_backward = False
 rotating_forward = False 
 username_box = TypingBox((center_x, 150), 800, 100, 1)
 password_box = TypingBox((center_x, 350), 800, 100, 2)
-highlight_x = 95
-highlight_y = 73
-highlight_num = 0
 
-#dicionary of cards for binder, key = card#, value = image. array cards_owned stores card# of cards owned
-card_images = {}
-card_back = pygame.transform.scale(pygame.image.load("Images/card_back.png"), (90, 123))
+#sprite animation for card dispenser
+back = (0,0,0)
+def get_image(sheet, frame, width, height, scale, color):
+    image = pygame.Surface((width, height)).convert_alpha()
+    image.blit(sheet, (0,0), ((frame * width), 0, width, height))
+    image.blit(sheet, (0,0), ((frame * width), 0, width, height))
+    image = pygame.transform.scale(image, (width * scale, height * scale))
+    image.set_colorkey(color)
+
+    return image
+
+#create animation list
+animation_list = []
+animation_steps = [1, 8]
+action = 0
+last_update = pygame.time.get_ticks()
+anim_cooldown = 250
+frame = 0
+step = 0
+
+for animation in animation_steps:
+    temp_img_list = []
+    for _ in range(animation):
+        temp_img_list.append(get_image(sprite_sheet, step, 320, 320, 1.75, back))
+        step += 1
+    animation_list.append(temp_img_list)
+
+
+
+
+#dicionary of cards for binder. numbers will correlate to cards, and they are all false for now 
+dict = {}
 for i in range(59):
-    if i < 10: 
-        card = pygame.transform.scale(pygame.image.load("Images/card_" + str(i) + ".png"), (90, 123))
-    #temporary placeholder for the rest of the card b/c too lazy to load in rn
-    else:
-        card = pygame.transform.scale(pygame.image.load("Images/card_placeholder.png"), (90, 123))
-
-    card_images[i] = card
+    dict[i] = False
 
 font = pygame.font.Font(None, 70)
 # Font Setup
 base_font = pygame.font.Font("teachemon.ttf", 30)
-small_font = pygame.font.Font("teachemon.ttf", 15)
 
 pivot_point = (450, 400) # The fixed pivot point around which to rotate
 angle = 0  # Initial rotation angle
@@ -131,32 +145,16 @@ text_back_rect = text_back.get_rect(center=(center_x, 550))
 text_signup = base_font.render("SIGN UP", True, (255, 255, 255), (66, 245, 152))
 signup_button_pos = (center_x, 450)
 text_signup_rect = text_signup.get_rect(center=signup_button_pos)
-text_signup_bg = text_signup.get_rect(width=400, height=60, center=signup_button_pos)
-
-text_choose_your_team = base_font.render("CHOOSE YOUR TEAM", True, (0, 0, 0))
-text_choose_your_team_rect = text_choose_your_team.get_rect(center=(center_x, 30))
-
-text_go = base_font.render("GO", True, (255, 255, 255))
-button_go_pos = (center_x, 555)
-text_go_rect = text_go.get_rect(center=button_go_pos)
-text_go_bg = text_go.get_rect(width=200, height=60, center=button_go_pos)
+text_signup_bg = text_signup.get_rect(width=399, height=60, center=signup_button_pos)
 
 pointer_pos = 1
-pointer_selected = 1
-pointer_hover = 0
-
-timer_on = False
-timer = None
 
 connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connection.connect((server, port))
 running = [True]
-# login return, signup return, searching, match
-server_messages = [None, None, None, None]
-# username, password, cards?
-userdata = [username, password, []]
-cards_owned = userdata[2]
-selected_cards = [None, None, None, None]
+# login return, signup return, searching
+server_messages = [None, None, None]
+userdata = [username, password]
 
 threading.Thread(target=handle_server_connection, args=(connection,running,server_messages,userdata)).start()
 
@@ -175,7 +173,7 @@ while running[0]:
     for event in events:
         if event.type == pygame.QUIT:
             connection.close()
-            running[0] = False
+            run = False
         if event.type == pygame.KEYDOWN: 
             key_pressed = True
             keys = pygame.key.get_pressed()
@@ -186,15 +184,7 @@ while running[0]:
                 if pointer_pos < 3:
                     pointer_pos += 2
             elif page == "Binder":
-                if highlight_num%9//3 == 2:
-                    pointer_pos = 2
-                elif highlight_num%9//3 < 2:
-                    highlight_num += 3
-            elif page == "Choose Card":
-                if pointer_pos <=4:
-                    pointer_pos = 5
-                elif pointer_pos < 7:
-                    pointer_pos += 1
+                pointer_pos = 2
             else:
                 pointer_pos += 1
 
@@ -204,23 +194,13 @@ while running[0]:
                 if pointer_pos > 2:
                     pointer_pos -= 2
             elif page == "Binder":
-                if pointer_pos == 2:
-                    pointer_pos = 1
-                elif highlight_num%9//3 > 0:
-                    highlight_num -= 3
-            elif page == "Choose Card":
-                if pointer_pos == 5:
-                    pointer_pos = 1
-                elif pointer_pos > 5:
-                    pointer_pos -= 1
+                pointer_pos = 1
             else:
                 if pointer_pos > 1:
                     pointer_pos -= 1
 
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-            keep_pointer = False
-
             if page == "Start":
                 if pointer_pos == 1:
                     page = "Login"
@@ -237,29 +217,12 @@ while running[0]:
                     page = "Settings"
             elif page == "Battle_Menu":
                 if pointer_pos == 1:
-                    if len(userdata[2]) > 3:
-                        page = "Choose Card"
-                        if selected_cards[0] is None:
-                            selected_cards[:] = userdata[2][:4]
-                    else:
-                        display_box(screen, "AT LEAST 4 CARDS NEEDED", base_font, 1)
-                        page = "Battle_Menu"
+                    page = "Loading"
+                    connection.send("match".encode())
                 elif pointer_pos == 2:
                     page = "SBattle"
                 elif pointer_pos == 3:
                     page = "Menu"
-            elif page == "Choose Card":
-                keep_pointer = True
-                if pointer_pos <= 4:
-                    pointer_selected = pointer_pos
-                elif pointer_pos == 5:
-                    if userdata[2][pointer_hover] not in selected_cards:
-                        selected_cards[pointer_selected-1] = userdata[2][pointer_hover]
-                elif pointer_pos == 6: # user clicked "Battle!"
-                    page = "Loading"
-                    connection.send("match".encode())
-                elif pointer_pos == 7:
-                    page = "Battle_Menu"
             elif page == "SBattle":
                 if sbattle_page == "00":
                     if pointer_pos == 1:
@@ -302,10 +265,6 @@ while running[0]:
                     if pointer_pos == 4:
                         pointer_pos = 1
                         battle_page = "00"
-            elif page == "Loading":
-                page = "Menu"
-                connection.send("exit queue".encode())
-                server_messages[2] = None
             elif page == "Claim":
                 if pointer_pos == 1:
                     page = "Menu"
@@ -332,8 +291,7 @@ while running[0]:
                     page = "Start"
                     username_box.reset()
                     password_box.reset()
-            if not keep_pointer:
-                pointer_pos = 1
+            pointer_pos = 1
         
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
@@ -346,19 +304,9 @@ while running[0]:
                     pointer_pos -= 1
             elif page == "Binder":
                 if pointer_pos == 1:
-                    if highlight_num % 9 % 3 > 0:
-                        highlight_num -= 1
-                    elif highlight_num // 9 == 1:
-                        highlight_num -= 7
-                    elif right_page > 2:
-                        right_page -= 2
+                    if left_page >= 3 and right_page <= 8:
                         left_page -= 2
-                        highlight_num = 11 + highlight_num
-            elif page == "Choose Card":
-                if pointer_pos <= 4 and pointer_pos > 1:
-                    pointer_pos -= 1
-                if pointer_pos == 5:
-                    if pointer_hover>0: pointer_hover-=1
+                        right_page -= 2
     
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
@@ -367,27 +315,14 @@ while running[0]:
                     pointer_pos += 1
             elif page == "Binder":
                 if pointer_pos == 1:
-                    if highlight_num % 9 % 3 < 2:
-                        highlight_num += 1
-                    elif highlight_num // 9 == 0:
-                        highlight_num += 7
-                    elif right_page < 8:
-                        right_page += 2
+                    if left_page > 0 and right_page < 7:
                         left_page += 2
-                        highlight_num = highlight_num % 9 - 2
-
-            elif page == "Choose Card":
-                if pointer_pos < 4:
-                    pointer_pos += 1
-                if pointer_pos == 5:
-                    if pointer_hover<len(userdata[2])-1: pointer_hover+=1
+                        right_page += 2
 
 
         if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim":
-            gacha = random.randint(1, 59)
-            if gacha not in cards_owned:
-                cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
-                connection.send(f"a{gacha}".encode())
+            gacha = random.randint(0, 58)
+            dict[gacha] = True 
         
             rotated_lever = pygame.transform.rotate(lever, -16)
             lever_rect = rotated_lever.get_rect(center=(480, 250))
@@ -395,6 +330,10 @@ while running[0]:
             # Start rotation forward when the mouse is clicked
             rotating_forward = True
             rotating_backward = False
+            if action == 1:
+                action -= 1
+            action += 1
+            frame = 0
 
     ### HANDLE SERVER MESSAGES
     
@@ -426,7 +365,6 @@ while running[0]:
             response = server_messages[0]
             if response == "1":
                 page = "Menu"
-                connection.send("get cards".encode())
             elif response == "0":
                 display_box(screen, "INCORRECT PASSWORD", base_font, 3)
             elif response == "2":
@@ -495,46 +433,13 @@ while running[0]:
         else:
             pointer_y = 530
         draw_battle(screen, sbattle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
-    
-    elif page == "Choose Card":
-        pointer_on = True
         
-        pointer_x = 20
-        # draw pointers
-        if pointer_pos <= 4:
-            pointer_y = 150
-        elif pointer_pos == 5:
-            pointer_y = 400
-        elif pointer_pos == 6:
-            pointer_x = 350
-            pointer_y = 533
-        else:
-            pointer_x = 740
-            pointer_y = 550
-        
-        draw_choose_your_team(screen, button_exit, text_choose_your_team, text_choose_your_team_rect, text_go, text_go_bg, text_go_rect, selected_cards, base_font)
-
-        # draw selected card pointer
-        screen.blit(pointer_down, ((pointer_selected * 200)-22, 60))
-        # draw hover card pointer
-        if pointer_pos <= 4:
-            screen.blit(pointer_up, ((pointer_pos * 200)-22, 270))
-        if pointer_pos == 5:
-            screen.blit(pointer_down, (478, 270))
-            screen.blit(pointer_up, (478, 480))
-        
-        draw_card_wheel(screen, userdata[2], selected_cards, pointer_hover, base_font, small_font)
-
     elif page == "Loading":
-        pointer_on = True
-        pointer_x = 740
-        pointer_y = 550
+        pointer_on = False
         if server_messages[2] is not None and server_messages[2]:
             page = "Battle"
-            timer = Timer(20, screen, running, base_font, (center_x, 50))
-            timer_on = True
         else:
-            draw_loading(screen, search_glass, circle_x, circle_y, button_exit)
+            draw_loading(screen, search_glass, circle_x, circle_y)
             toUpdate = update_circle(circle_x, circle_y, circle_angle, circle_start, 50)
             circle_x, circle_y, circle_angle, circle_start = toUpdate
     
@@ -551,18 +456,7 @@ while running[0]:
             pointer_y = 530
 
         draw_battle(screen, battle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
-        if timer_on:
-            timer.draw()
-            if timer.time == 0:
-                timer_on = False
-        
-        if server_messages[3] is not None:
-            if server_messages[3] == "DC":
-                display_box(screen, "OPPONENT DISCONNECTED", base_font, 3)
-                timer_on = False
-                timer = None
-                page = "Menu"
-                server_messages[3] = None
+
         
     elif page == "Binder":
         pointer_x = 750
@@ -571,24 +465,24 @@ while running[0]:
             pointer_on = True
         else:
             pointer_on = False
-        draw_binder(screen, left_page, right_page, resized_binder, font, card_images, cards_owned, card_back, button_exit)
-
-        if highlight_num < 9:
-            screen.blit(binder_highlight, (150 + highlight_num%3*95, 100 + highlight_num//3*135))
-        else:
-            screen.blit(binder_highlight, (570 + (highlight_num-9)%3*95, 100 + (highlight_num-9)//3*135))
-
-        # for future - making card bigger when pressed enter 
-        #if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN and not pointer_pos == 2:
-            #screen.blit(base_font.render(str(highlight_num), True, (0, 0, 0)), (300, 300))
-
+        draw_binder(screen, left_page, right_page, resized_binder, font, button_exit)
 
     elif page == "Claim":
         pointer_on = True
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
-        draw_claim(screen, button_exit, resized_dispenser, font, coins, gacha)
+        draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, action)
+        #update animation
+        current_time = pygame.time.get_ticks()
+        if current_time - last_update >= anim_cooldown:
+            frame += 1
+            last_update = current_time
+            if frame >= len(animation_list[action]):
+                frame = 0
+
+    
+            
         # Update rotation angle based on direction
         if rotating_forward:
             angle += rotation_speed
@@ -603,6 +497,8 @@ while running[0]:
                 angle = 0
                 rotating_backward = False
             rotated_lever = pygame.transform.rotate(rotated_lever, 2)
+
+        
             
         #if rotating_forward or rotating_backward:
         lever_rect = rotated_lever.get_rect(center=pivot_point)
