@@ -113,7 +113,7 @@ def draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, a
     screen.blit(button_exit, (785,555))
     screen.blit(animation_list[action][frame], (260,50))
     screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
-    screen.blit(font.render(str(gacha), True, (0, 0, 0)), (480, 250))
+    screen.blit(font.render(str(gacha), True, (255, 255, 255)), (480, 250))
 
 def draw_rotating_lever(screen, new_lever, rect):
     screen.blit(new_lever, rect)
