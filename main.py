@@ -84,12 +84,7 @@ circle_y = 0
 circle_angle = 0
 circle_start = True
 gacha = ""
-min_angle = -16
-angle = min_angle
-max_angle = -90
 clock = pygame.time.Clock()
-rotating_forward = True
-dispensing = False
 username_box = TypingBox((center_x, 150), 800, 100, 1)
 password_box = TypingBox((center_x, 350), 800, 100, 2)
 highlight_x = 95
@@ -98,10 +93,10 @@ highlight_num = 0
 
 #sprite animation for card dispenser
 back = (0,0,0)
-def get_image(sheet, frame, width, height, scale, color):
+def get_image(sheet, dispenser_frame, width, height, scale, color):
     image = pygame.Surface((width, height)).convert_alpha()
-    image.blit(sheet, (0,0), ((frame * width), 0, width, height))
-    image.blit(sheet, (0,0), ((frame * width), 0, width, height))
+    image.blit(sheet, (0,0), ((dispenser_frame * width), 0, width, height))
+    image.blit(sheet, (0,0), ((dispenser_frame * width), 0, width, height))
     image = pygame.transform.scale(image, (width * scale, height * scale))
     image.set_colorkey(color)
 
@@ -109,11 +104,11 @@ def get_image(sheet, frame, width, height, scale, color):
 
 #create animation list
 animation_list = []
-animation_steps = [1, 8]
+animation_steps = [1, 11]
 action = 0
 last_update = pygame.time.get_ticks()
-anim_cooldown = 250
-frame = 0
+anim_cooldown = 200
+dispenser_frame = 0
 step = 0
 
 for animation in animation_steps:
@@ -142,7 +137,7 @@ small_font = pygame.font.Font("teachemon.ttf", 15)
 
 pivot_point = (450, 400) # The fixed pivot point around which to rotate
 angle = 0  # Initial rotation angle
-rotation_speed = 2  # Degrees per frame
+rotation_speed = 2  # Degrees per dispenser_frame
 
 # LOGIN SCREEN VARIABLES
 text_username = base_font.render("USERNAME", True, (0, 0, 0))
@@ -263,8 +258,7 @@ while running[0]:
                     left_page = 1
                 elif pointer_pos == 3:
                     page = "Claim"
-                    dispensing = False
-                    angle = min_angle
+                    dispenser_frame = 0
                 elif pointer_pos == 4:
                     page = "Settings"
             elif page == "Battle_Menu":
@@ -418,19 +412,11 @@ while running[0]:
             if gacha not in cards_owned:
                 cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
                 connection.send(f"a{gacha}".encode())
-        
-            rotated_lever = pygame.transform.rotate(lever, angle)
-            lever_rect = rotated_lever.get_rect(center=(480, 250))
-            angle = min_angle
-            
-            # Start rotation forward when the mouse is clicked
-            dispensing = True
-            rotating_forward = True
 
             if action == 1:
                 action -= 1
             action += 1
-            frame = 0
+            dispenser_frame = 0
 
     ### HANDLE SERVER MESSAGES
     
@@ -624,37 +610,17 @@ while running[0]:
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
-        draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, action)
-        if dispensing:
-            #update animation
-            current_time = pygame.time.get_ticks()
-            if current_time - last_update >= anim_cooldown:
-                frame += 1
-                last_update = current_time
-                if frame >= len(animation_list[action]):
-                    frame = 0
+        draw_claim(screen, button_exit, font, coins, gacha, animation_list, dispenser_frame, action)
 
-            # Update rotation angle based on direction
-            if rotating_forward:
-                angle -= rotation_speed
-                if angle <= max_angle:
-                    angle = max_angle
-                    rotating_forward = False
-            else:
-                angle += rotation_speed
-                if angle >= min_angle:
-                    angle = min_angle
-                    dispensing = False
-        else:
-            frame = 0
-        
-        rotated_lever = pygame.transform.rotate(lever, angle)
-        lever_rect = rotated_lever.get_rect(center=pivot_point)
-        draw_rotating_lever(screen, rotated_lever, lever_rect)    
-        # Draw everything on screen
-        #draw_claim(rotated_lever, lever_rect, gacha)  # Update display with gacha result
-        #pygame.display.flip()  # Refresh the screen
-        #clock.tick(30)
+        current_time = pygame.time.get_ticks()
+        if current_time - last_update >= anim_cooldown:
+            dispenser_frame += 1
+            last_update = current_time
+            if dispenser_frame == 11:
+                action = (action + 1) % len(animation_list)
+                dispenser_frame = 0          
+            elif dispenser_frame >= len(animation_list[action]):
+                dispenser_frame = 0
 
        
     elif page == "Settings":

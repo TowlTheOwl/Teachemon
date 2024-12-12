@@ -111,12 +111,12 @@ def draw_binder(screen, left, right, binder, font, card_images, cards_owned, car
 def draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, action):
     screen.fill("grey")
     screen.blit(button_exit, (785,555))
-    screen.blit(animation_list[action][frame], (260,50))
+    screen.blit(animation_list[action][frame], (250,50))
     screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
     screen.blit(font.render(str(gacha), True, (255, 255, 255)), (480, 250))
 
-def draw_rotating_lever(screen, new_lever, rect):
-    screen.blit(new_lever, rect)
+# def draw_rotating_lever(screen, new_lever, rect):
+#     screen.blit(new_lever, rect)
 
 def draw_settings(screen, button_credits, button_exit):
     screen.fill("grey")
