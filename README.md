@@ -6,7 +6,7 @@ The cards consist of teachers from the school, and each teachers have their own 
 The game is built mainly using python and socket, with other python dependencies.
 
 
-# Instructions to run the code:
+## Instructions to run the code:
 /server is independent from rest of the code, as it is a code for server host.
 
 1. Make sure the server is hosted. Run server.py in the server directory, and the code should print "Listening..." when it is connected
