@@ -1,4 +1,5 @@
 #Import and Initialize PyGame and math
+import json
 import pygame
 pygame.init()
 import math
@@ -9,6 +10,7 @@ from utils.battle import *
 from utils.draw import *
 import threading
 import numpy as np
+import csv
 
 # Connect to server's IPv4 address
 server = "localhost"
@@ -39,14 +41,18 @@ button_multiplayer = pygame.image.load("Images/multiplayer x5.png")
 button_exit = pygame.image.load("Images/exit x5.png")
 battle_main = pygame.image.load("Images/battle_main.png")
 battle_00 = pygame.image.load("Images/battle_00.png")
+vs_bg = pygame.image.load("Images/vs_bg.png")
 pointer = pygame.image.load("Images/pointer x5.png")
 pointer_up = pygame.transform.rotate(pointer, 90)
 pointer_down = pygame.transform.rotate(pointer, 270)
 search_glass = pygame.image.load("Images/Magnifying Glass.png")
 binder_highlight = pygame.image.load("Images/yellow_border.png")
 placeholder_card = pygame.image.load("Images/placeholder.png")
+main_screen_bg = pygame.image.load("Images/bg.png")
+coin = pygame.image.load("Images/coin.png")
 
-
+resized_coin = pygame.transform.scale(coin, (112,112))
+screen_bg = pygame.transform.scale(main_screen_bg, (ScreenWidth, ScreenHeight))
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
 dispenser = pygame.image.load("Images/draft dispense.png")
@@ -55,7 +61,7 @@ sprite_sheet = pygame.image.load("Images/dispense sheet.png").convert_alpha()
 lever = pygame.image.load("Images/test6.png")
 lever = pygame.transform.scale(lever, (65, 364))
 rotated_lever = pygame.transform.rotate(lever, -16)
-lever_rect = rotated_lever.get_rect(center=(480, 250))
+cut_scene_sheet = pygame.image.load("Images/cut_scene_sheet.png").convert_alpha()
 
 
 page = "Start"
@@ -69,11 +75,16 @@ sbattle_page = "00"
 battle_page = "00"
 fontx3 = pygame.font.Font("Teachemon.ttf", 21)
 fontx5 = pygame.font.Font("Teachemon.ttf", 35)
-teacher_file = open("Data/TeacheData.txt", "r")
-teacher_data = teacher_file.readlines()
-pteach1 = teacher_data[0].split(",")
-pteach2 = []
-pteach3 = []
+
+print("Retrieving Teachemon data.")
+with open("Data/TeachemonData - Teachemon.csv", 'r') as file:
+    teachemon_data = []
+    csvfile = csv.DictReader(file) # reads data file for teachemon
+    for row in csvfile:
+        teachemon_data.append(row)
+print("Complete.\r")
+
+
 pointer_on = True
 pointer_x = 55
 pointer_y = 257
@@ -93,10 +104,11 @@ highlight_num = 0
 
 #sprite animation for card dispenser
 back = (0,0,0)
-def get_image(sheet, dispenser_frame, width, height, scale, color):
+
+def get_image(sheet, frame, width, height, scale, color):
     image = pygame.Surface((width, height)).convert_alpha()
-    image.blit(sheet, (0,0), ((dispenser_frame * width), 0, width, height))
-    image.blit(sheet, (0,0), ((dispenser_frame * width), 0, width, height))
+    image.blit(sheet, (0,0), ((frame * width), 0, width, height))
+    image.blit(sheet, (0,0), ((frame * width), 0, width, height))
     image = pygame.transform.scale(image, (width * scale, height * scale))
     image.set_colorkey(color)
 
@@ -107,7 +119,7 @@ animation_list = []
 animation_steps = [1, 11]
 action = 0
 last_update = pygame.time.get_ticks()
-anim_cooldown = 200
+anim_cooldown = 120
 dispenser_frame = 0
 step = 0
 
@@ -117,6 +129,20 @@ for animation in animation_steps:
         temp_img_list.append(get_image(sprite_sheet, step, 320, 320, 1.75, back))
         step += 1
     animation_list.append(temp_img_list)
+
+cut_scene_animation = []
+cut_scene_frame = 0
+cut_scene_cooldown = 75
+for i in range(33):
+    cut_scene_animation.append(get_image(cut_scene_sheet, i, 1000, 600, 1.3, back))
+
+#variable for card zoom factor
+card_zoom = 1
+#card display for claim
+card_visible = False
+current_card = None
+card_rect = None
+lever_rect = pygame.Rect(445, 288, 40, 170)
 
 #dicionary of cards for binder, key = card#, value = image. array cards_owned stores card# of cards owned
 card_images = {}
@@ -128,16 +154,14 @@ for i in range(59):
     else:
         card = pygame.transform.scale(pygame.image.load("Images/card_placeholder.png"), (90, 123))
 
-    card_images[i+1] = card
+    card_images[i] = card
 
 font = pygame.font.Font(None, 70)
 # Font Setup
 base_font = pygame.font.Font("teachemon.ttf", 30)
 small_font = pygame.font.Font("teachemon.ttf", 15)
 
-pivot_point = (450, 400) # The fixed pivot point around which to rotate
-angle = 0  # Initial rotation angle
-rotation_speed = 2  # Degrees per dispenser_frame
+
 
 # LOGIN SCREEN VARIABLES
 text_username = base_font.render("USERNAME", True, (0, 0, 0))
@@ -175,12 +199,15 @@ timer = None
 connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 connection.connect((server, port))
 running = [True]
-# login return, signup return, searching, match
-server_messages = [None, None, None, None]
-# username, password, cards?
-userdata = [username, password, []]
-cards_owned = userdata[2]
+
+server_messages = [None, None, None, None, None, None, None] # check utils
+
 selected_cards = [None, None, None, None]
+userdata = [username, password, [], selected_cards] # username, password, owned cards, selected cards
+cards_owned = userdata[2]
+
+must_swap = False
+opponent_username = None
 
 threading.Thread(target=handle_server_connection, args=(connection,running,server_messages,userdata)).start()
 
@@ -214,6 +241,8 @@ while running[0]:
                     pointer_pos = 2
                 elif highlight_num%9//3 < 2:
                     highlight_num += 3
+                if card_zoom >= 3:
+                    card_zoom = 1
             elif page == "Choose Card":
                 if pointer_pos <=4:
                     pointer_pos = 5
@@ -232,6 +261,8 @@ while running[0]:
                     pointer_pos = 1
                 elif highlight_num%9//3 > 0:
                     highlight_num -= 3
+                if card_zoom >= 3:
+                    card_zoom = 1
             elif page == "Choose Card":
                 if pointer_pos == 5:
                     pointer_pos = 1
@@ -309,26 +340,43 @@ while running[0]:
                         pointer_pos = 1
                         sbattle_page = "00"
             elif page == "Battle":
-                if battle_page == "00":
-                    if pointer_pos == 1:
-                        battle_page = "10"
-                    elif pointer_pos == 2:
-                        battle_page = "20"
-                    elif pointer_pos == 3:
-                        battle_page = "30"
-                    elif pointer_pos == 4:
-                        page = "Battle_Menu"
-                        pointer_pos = 1
-                elif battle_page in ["10", "20", "30"]:
-                    if pointer_pos == 1:
-                        battle_page = battle_page[0] + "1"
-                    if pointer_pos == 2:
-                        battle_page = battle_page[0] + "2"
-                    if pointer_pos == 3:
-                        battle_page = battle_page[0] + "3"
-                    if pointer_pos == 4:
-                        pointer_pos = 1
-                        battle_page = "00"
+                if pointer_on:
+                    if battle_page == "00":
+                        if not must_swap:
+                            if pointer_pos == 1:
+                                battle_page = "10"
+                            elif pointer_pos == 2:
+                                battle_page = "20"
+                            elif pointer_pos == 3:
+                                battle_page = "30"
+                            elif pointer_pos == 4:
+                                battle_page = "40"
+                                pointer_pos = 2
+                        else:
+                            if pointer_pos == 3:
+                                battle_page = "30"
+                            elif pointer_pos == 4:
+                                battle_page = "40"
+                                pointer_pos = 2
+                    elif battle_page in ("10", "20"):
+                        if pointer_pos < 4:
+                            selected_move = battle_page[0] + str(pointer_pos)
+                        elif pointer_pos == 4:
+                            pointer_pos = 1
+                            battle_page = "00"
+                    elif battle_page == "30":
+                        if pointer_pos != 4:
+                            card_idx = selected_cards.index(other_cards[pointer_pos-1])
+                            if card_idx != curr_cards[player_num] and self_hps[card_idx] > 0:
+                                selected_move = "3" + str(card_idx+1)
+                        else:
+                            pointer_pos = 1
+                            battle_page = "00"
+                    elif battle_page == "40":
+                        if pointer_pos == 1:
+                            page = "Battle_Menu"
+                        elif pointer_pos == 2:
+                            battle_page = "00"
             elif page == "Loading":
                 page = "Menu"
                 connection.send("exit queue".encode())
@@ -344,6 +392,14 @@ while running[0]:
             elif page == "Binder":
                 if pointer_pos == 2:
                     page = "Menu"
+                
+                if card_zoom < 3:
+                    card_zoom += 0.2
+                if card_zoom >= 3:
+                    card_zoom = 1
+                
+        
+
             elif page == "Login" or page == "Signup":
                 if pointer_pos == 3:
                     # update user data and requeset login/signup
@@ -380,6 +436,8 @@ while running[0]:
                     elif left_page + 1 > 2:
                         left_page -= 2
                         highlight_num = 11 + highlight_num
+                    if card_zoom >= 3:
+                        card_zoom = 1
             elif page == "Choose Card":
                 if pointer_pos <= 4 and pointer_pos > 1:
                     pointer_pos -= 1
@@ -400,6 +458,8 @@ while running[0]:
                     elif left_page + 1 < 8:
                         left_page += 2
                         highlight_num = highlight_num % 9 - 2
+                    if card_zoom >= 3:
+                        card_zoom = 1
 
             elif page == "Choose Card":
                 if pointer_pos < 4:
@@ -408,16 +468,30 @@ while running[0]:
                     if pointer_hover<len(userdata[2])-1: pointer_hover+=1
 
 
-        if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim":
-            gacha = random.randint(1, 59)
-            if gacha not in cards_owned:
-                cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
-                connection.send(f"a{gacha}".encode())
+        if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim": 
+            if lever_rect.collidepoint(event.pos) and not card_visible:
+                gacha = random.randint(1, 59)
+                if gacha not in cards_owned:
+                    cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
+                    connection.send(f"a{gacha}".encode())
 
-            if action == 1:
-                action -= 1
-            action += 1
-            dispenser_frame = 0
+                current_card = card_images[gacha]
+                card_rect = current_card.get_rect(center=(ScreenWidth // 2 - 250, ScreenHeight // 2))
+                card_visible = True
+
+                #update animation
+                if action == 1:
+                    action -= 1
+                action += 1
+                dispenser_frame = 0
+            elif card_visible and card_rect and card_rect.collidepoint(event.pos):
+                #hide card if clicked
+                card_visible = False
+                current_card = None
+                card_rect = None
+  
+
+
 
     ### HANDLE SERVER MESSAGES
     
@@ -489,7 +563,7 @@ while running[0]:
         
         pointer_x = 55
         pointer_y = 257 + 70 * (pointer_pos - 1)
-        draw_menu(screen, logo, button_battle, button_binder, button_claim, button_settings)
+        draw_menu(screen, logo, button_battle, button_binder, button_claim, button_settings, screen_bg)
 
     elif page == "Battle_Menu":
         if pointer_pos > 3:
@@ -503,21 +577,22 @@ while running[0]:
         draw_singleplayer_menu(screen)
 
     elif page == "SBattle":
-        """
-        pointer pos
-        [1 2
-         3 4]
-        """
-        if pointer_pos % 2 == 1:
-            pointer_x = 30
-        else:
-            pointer_x = 525
+        page = "Menu"
+        # """
+        # pointer pos
+        # [1 2
+        #  3 4]
+        # """
+        # if pointer_pos % 2 == 1:
+        #     pointer_x = 30
+        # else:
+        #     pointer_x = 525
         
-        if pointer_pos <= 2:
-            pointer_y = 435
-        else:
-            pointer_y = 530
-        draw_battle(screen, sbattle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
+        # if pointer_pos <= 2:
+        #     pointer_y = 435
+        # else:
+        #     pointer_y = 530
+        # draw_battle(screen, sbattle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
     
     elif page == "Choose Card":
         pointer_on = True
@@ -552,40 +627,211 @@ while running[0]:
         pointer_on = True
         pointer_x = 740
         pointer_y = 550
-        if server_messages[2] is not None and server_messages[2]:
-            page = "Battle"
-            timer = Timer(20, screen, running, base_font, (center_x, 50))
-            timer_on = True
+        if server_messages[2]:
+            page = "Match Found"
+            player_num = int(server_messages[6])-1
+            opp_num = (player_num+1)%2
+            timer = None
+            timer_on = False
         else:
             draw_loading(screen, search_glass, circle_x, circle_y, button_exit)
             toUpdate = update_circle(circle_x, circle_y, circle_angle, circle_start, 50)
             circle_x, circle_y, circle_angle, circle_start = toUpdate
     
-    elif page == "Battle":
-        pointer_on = True
-        if pointer_pos % 2 == 1:
-            pointer_x = 30
-        else:
-            pointer_x = 525
-        
-        if pointer_pos <= 2:
-            pointer_y = 435
-        else:
-            pointer_y = 530
+    elif page == "Match Found":
+        while (opponent_username is None):
+            display_box(screen, "MATCH FOUND", base_font)
+            if server_messages[3] is not None:
+                if server_messages[3] == "DC":
+                    display_box(screen, "OPPONENT DISCONNECTED", base_font, 3)
+                    timer_on = False
+                    timer = None
+                    page = "Menu"
+                    server_messages[3] = None
+                elif server_messages[3][0] == "u":
+                    user_datas = server_messages[3][1:].split("'")
+                    opponent_username = user_datas[opp_num]
+                    opponent_cards = json.loads(user_datas[opp_num+2])
+                    self_hps = json.loads(user_datas[player_num + 4])
+                    opp_hps = json.loads(user_datas[opp_num + 4])
+                    curr_cards = [0, 0]
+                    server_messages[3] = None
+                    battle_page = "00"
+                    game_status = None
+                    other_cards = selected_cards.copy()
+                    other_cards.pop(0)
+                    other_cards = tuple(other_cards)
+                    time.sleep(3)
+                    pointer_pos = 1
+                    selected_move = None
+                    first_frame = False
+                    names = [None, None]
+                    names[player_num] = userdata[0]
+                    names[(player_num+1)%2] = opponent_username
+                    all_cards = [None, None]
+                    all_cards[player_num] = selected_cards.copy()
+                    all_cards[(player_num+1)%2] = opponent_cards
+                    must_swap = False
+                    actions = [None, None]
+                    waiting = False
+                    page = "Cut"
+                else:
+                    print(f"Wart {server_messages[3]}")
 
-        draw_battle(screen, battle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
-        if timer_on:
-            timer.draw()
-            if timer.time == 0:
-                timer_on = False
-        
+    elif page == "Battle":
         if server_messages[3] is not None:
-            if server_messages[3] == "DC":
+            game_message = server_messages[3]
+            if game_message == "DC":
                 display_box(screen, "OPPONENT DISCONNECTED", base_font, 3)
                 timer_on = False
                 timer = None
                 page = "Menu"
-                server_messages[3] = None
+            elif game_message[0] == "d":
+                winner = int(game_message[1])
+                if winner == player_num: # won
+                    display_box(screen, "YOU WON", base_font, 3)
+                    timer_on = False
+                    timer = None
+                    page = "Menu"
+                else: # lost
+                    display_box(screen, "YOU LOST", base_font, 3)
+                    timer_on = False
+                    timer = None
+                    page = "Menu"
+
+            elif game_message[0] == "g":
+                if game_message[1:5] == "move":
+                    game_status = "move"
+                    timer_on = True
+                    timer = Timer(int(server_messages[3][5:]), screen, running, base_font, (center_x, 250))
+                    waiting = False
+            elif game_message[0] == "m":
+                parsed_msg = game_message[2:].split("'")
+                if game_message[1] == "0":
+                    self_action = parsed_msg[player_num]
+                    opp_action = parsed_msg[opp_num]
+                    actions[:] = [opp_action, opp_action]
+                    actions[player_num] = self_action
+                    first_to_cast = int(parsed_msg[2])
+                    self_hps[:] = json.loads(parsed_msg[player_num+3])
+                    opp_hps[:] = json.loads(parsed_msg[opp_num+3])
+                    game_status = "animate"
+                    turn = (first_to_cast, (first_to_cast+1)%2)
+                    first_frame = True
+                    move_num = 0
+                    waiting = False
+                    print(actions)
+                elif game_message[1] == "1":
+                    # someone died
+                    dead_players = json.loads(parsed_msg[0])
+                    game_status = "dead"
+                    if player_num in dead_players:
+                        battle_page = "30"
+                    timer_on = True
+                    timer = Timer(int(parsed_msg[1]), screen, running, base_font, (center_x, 250))
+                elif game_message[1] == "2":
+                    first_to_cast = 0
+                    actions = json.loads(parsed_msg[0])
+                    game_status = "animate"
+                    move_num = 0
+                else:
+                    print(f"Unexpected server message: {game_message}")
+            else:
+                print(f"Wart {server_messages[3]}")
+            server_messages[3] = None
+
+        if game_status != None:
+            pointer_on = not waiting
+            if pointer_pos % 2 == 1:
+                pointer_x = 30
+            else:
+                pointer_x = 525
+            
+            if pointer_pos <= 2:
+                pointer_y = 435
+            else:
+                pointer_y = 530
+
+            draw_battle(screen, battle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, teachemon_data[selected_cards[curr_cards[player_num]]], opponent_username, small_font, other_cards)
+            opp_card = base_font.render(str(opponent_cards[curr_cards[opp_num]]), True, (0, 0, 0))
+            self_card = base_font.render(str(selected_cards[curr_cards[player_num]]), True, (0, 0, 0))
+            opp_card_hp = base_font.render(str(opp_hps[curr_cards[opp_num]]), True, (200, 50, 50))
+            self_card_hp = base_font.render(str(self_hps[curr_cards[player_num]]), True, (50, 200, 50))
+            screen.blit(opp_card, (750, 120))
+            screen.blit(self_card, (200, 200))
+            screen.blit(opp_card_hp, (750, 170))
+            screen.blit(self_card_hp, (200, 250))
+            
+            if game_status == "move":
+                game_announcement = base_font.render("CHOOSE YOUR MOVE", True, (245, 66, 66))
+                game_announcement_rect = game_announcement.get_rect(center=(center_x, 50))
+                screen.blit(game_announcement, game_announcement_rect)
+                selected_move_display = base_font.render(f"SELECTED {selected_move}".upper(), True, (0, 0, 0))
+                screen.blit(selected_move_display, (center_x, center_y+50))
+                if timer_on:
+                    timer.draw()
+                    if timer.time == 0:
+                        timer_on = False
+                        # send selected move to the server
+                        if selected_move is not None:
+                            sent_move = ("m", "i", "s")[int(selected_move[0])-1] + str(int(selected_move[1])-1)
+                        else:
+                            sent_move = "n0"
+                        connection.send(f"x{sent_move}".encode())
+                        selected_move = None
+            
+            elif game_status == "animate":
+                if move_num < 2:
+                    source = turn[move_num]
+                    if actions[source] is not None and actions[source] != "None":
+                        source_name = names[source]
+                        display_box(screen, f"{source_name} {actions[source]}".upper(), base_font, 4)
+                        if actions[source][0] == "s":
+                            curr_cards[source] = int(actions[source][1])
+                            if source == player_num:
+                                other_cards = selected_cards.copy()
+                                other_cards.remove(selected_cards[curr_cards[player_num]])
+                                other_cards = tuple(other_cards)
+                    move_num += 1
+                else:
+                    connection.send("xanicomp".encode())
+                    game_status = "waiting"
+                if first_frame:
+                    first_fame = False
+            
+            elif game_status == "dead":
+                if timer_on:
+                    timer.draw()
+                    if timer.time == 0:
+                        timer_on = False
+                if player_num in dead_players:
+                    game_announcement = base_font.render("SWAP YOUR TEACHEMON", True, (245, 66, 66))
+                    game_announcement_rect = game_announcement.get_rect(center=(center_x, 200))
+                    screen.blit(game_announcement, game_announcement_rect)
+                    must_swap = True
+                    if timer.time == 0:
+                        # send selected move to the server
+                        if selected_move is not None:
+                            sent_move = ("n", "n", "s")[int(selected_move[0])-1] + str(int(selected_move[0])-1)
+                        else:
+                            sent_move = "n0"
+                        connection.send(f"x{sent_move}".encode())
+                        selected_move = None
+                else:
+                    game_announcement = base_font.render("WAITING FOR OPPONENT", True, (245, 66, 66))
+                    game_announcement_rect = game_announcement.get_rect(center=(center_x, 200))
+                    screen.blit(game_announcement, game_announcement_rect)
+                    waiting = True
+                
+                if timer.time == 0:
+                    game_status = "waiting"
+            
+            elif game_status == "waiting":
+                display_box(screen, "WAITING", base_font)
+
+        else:
+            display_box(screen, "GAME STARTING", base_font)
+
         
     elif page == "Binder":
         pointer_x = 750
@@ -594,12 +840,16 @@ while running[0]:
             pointer_on = True
         else:
             pointer_on = False
-        draw_binder(screen, left_page, left_page + 1, resized_binder, font, card_images, cards_owned, card_back, button_exit)
+        if card_zoom > 1 and card_zoom <= 3:
+            card_zoom += 0.2
+        draw_binder(screen, left_page, left_page + 1, resized_binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num)
 
-        if highlight_num < 9:
-            screen.blit(binder_highlight, (150 + highlight_num%3*95, 100 + highlight_num//3*135))
-        else:
-            screen.blit(binder_highlight, (570 + (highlight_num-9)%3*95, 100 + (highlight_num-9)//3*135))
+        
+        
+        # if highlight_num < 9:
+        #    screen.blit(binder_highlight, (150 + highlight_num%3*95, 100 + highlight_num//3*135))
+        # else:
+        #    screen.blit(binder_highlight, (570 + (highlight_num-9)%3*95, 100 + (highlight_num-9)//3*135))
 
         # for future - making card bigger when pressed enter 
         #if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN and not pointer_pos == 2:
@@ -611,7 +861,7 @@ while running[0]:
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
-        draw_claim(screen, button_exit, font, coins, gacha, animation_list, dispenser_frame, action)
+        draw_claim(screen, button_exit, font, coins, gacha, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, lever_rect, screen_bg, resized_coin)
 
         current_time = pygame.time.get_ticks()
         if current_time - last_update >= anim_cooldown:
@@ -623,6 +873,21 @@ while running[0]:
             elif dispenser_frame >= len(animation_list[action]):
                 dispenser_frame = 0
 
+    elif page == "Cut":
+        pointer_on = False
+        draw_cut(screen, button_exit, fontx3, cut_scene_animation, cut_scene_frame, vs_bg,)
+        
+        current_time = pygame.time.get_ticks()
+        if current_time - last_update >= cut_scene_cooldown:
+            if cut_scene_frame == 32:
+                pygame.time.wait(1500)
+                cut_scene_frame = 0
+                page = "Battle"
+                connection.send("xCONNECTED".encode())
+            else:
+                cut_scene_frame += 1
+                last_update = current_time
+            
        
     elif page == "Settings":
         pointer_on = True

@@ -1,16 +1,30 @@
 import socket
+import sys
 import threading
 import time
 from typing import List, Tuple, Dict
-
+import json
+from player import Player
+import csv
+import random
 
 class Server:
     def __init__(self, IP, port):
         self.run = True
+        print("Initializing...\r")
 
-        with open("data.txt", "r") as file:
+        print("Retrieving user data.")
+        with open("data/data.txt", "r") as file:
             self.total_cards = int(file.readline().strip("\n").split(",")[2]) # number of total cards
+        print(f"Number of total cards: {self.total_cards}.")
 
+        print("Retrieving Teachemon data.")
+        with open("data/TeachemonData - Teachemon.csv", 'r') as file:
+            self.teachemon_data = []
+            csvfile = csv.DictReader(file) # reads data file for teachemon
+            for row in csvfile:
+                self.teachemon_data.append(row)
+        print("Complete.\r")
         self.ip = IP
         self.port = port
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -43,6 +57,7 @@ class Server:
         for user in self.logged_in_clients:
             self.logged_in_clients[user].close()
         self.server.close()
+        sys.exit()
         quit()
     
     # def check_clients(self):
@@ -79,6 +94,7 @@ class Server:
         """
         client_connected = True
         user = None
+        player = None
         while self.run and client_connected:
             try:
                 data = c.recv(1024)
@@ -95,7 +111,7 @@ class Server:
                         c.send("smSEARCHING".encode())
                         
                         if user is not None:
-                            self.battle_queue.add_to_queue(c, msg)
+                            self.battle_queue.add_to_queue(player, msg)
                         else:
                             raise Exception("Searching for match without logging in")
                     
@@ -106,11 +122,13 @@ class Server:
                         if found == "1":
                             user = username
                             self.logged_in_clients[user] = c
+                            player = Player(c, user)
                         c.send(f"sl{found}".encode())
                         print(f"sent: sl{found}")
 
                     elif msg == "signup":
                         # 0 if blank password, 2 if username taken
+
                         c.send("rusername,password".encode())
                         username, password = c.recv(1024).decode().split(",")
                         if len(password) < 1:
@@ -144,6 +162,10 @@ class Server:
                             else:
                                 print("USERNAME NOT FOUND WHEN SEARCHING FOR CARDS")
                     
+                    elif msg[0] == "x":
+                        # it is a match message, relay onto server
+                        player.queue.append(msg[1:])
+
                     elif msg[0] == "a":
                         self.add_card(user, msg[1:])
                             
@@ -159,8 +181,8 @@ class Server:
                 else:
                     raise e
         
-    def handle_match(self, c1: socket.socket, c2: socket.socket):
-        match = BattleHandler(self, c1, c2)
+    def handle_match(self, p1, p2):
+        BattleHandler(self, p1, p2, self.teachemon_data)
 
     def find_login(self, username: str, password: str="") -> int:
         """
@@ -173,7 +195,7 @@ class Server:
         1: match
         2: already logged in
         """
-        with open("data.txt", "r") as file:
+        with open("data/data.txt", "r") as file:
             data = file.readlines()
             for info in data:
                 info = info.split(",")
@@ -193,7 +215,7 @@ class Server:
         """
         if (self.find_login(username) == 0):
             return False
-        with open("data.txt", "a") as file:
+        with open("data/data.txt", "a") as file:
             file.write(f"\n{username},{password}," + "0"*59)
         return True
 
@@ -211,7 +233,7 @@ class Server:
         return "".join(["1" if i+1 in l else "0" for i in range(self.total_cards)])
 
     def find_card(self, username):
-        with open("data.txt", "r+") as file:
+        with open("data/data.txt", "r+") as file:
             data = file.readlines()
             for info in data:
                 user, _, card = info.split(",")
@@ -220,7 +242,7 @@ class Server:
         return ""
 
     def add_card(self, username:str, card_num:str):
-        with open("data.txt", "r+") as file:
+        with open("data/data.txt", "r+") as file:
             data = file.readlines()
             for index in range(len(data)):
                 user, pswd, card = data[index].split(",")
@@ -228,50 +250,275 @@ class Server:
                     card_list = self.card_to_list(card)
                     if card_num not in card_list:
                         card_list.append(int(card_num))
-                    self.replace_line("data.txt", index, f"{user},{pswd},{self.list_to_card(card_list)}\n")
+                    self.replace_line("data/data.txt", index, f"{user},{pswd},{self.list_to_card(card_list)}\n")
                     print(f"Replaced Line {index} with {user},{pswd},{self.list_to_card(card_list)}")
                     return
 
 class BattleHandler:
-    def __init__(self, server:Server, p1:socket.socket, p2:socket.socket):
+    def __init__(self, server:Server, p1:Player, p2:Player, teachemon_data:list):
         self.game_in_progress = True
+        self.teachemon_data = teachemon_data
         self.server = server
         self.p1 = p1
         self.p2 = p2
-        p1.send("smMATCH".encode())
-        p2.send("smMATCH".encode())
+        self.c1 = p1.conn
+        self.c2 = p2.conn
+        self.p1_msg = p1.queue
+        self.p2_msg = p2.queue
+
+        self.c1.send("rownedcards".encode())
+        self.c2.send("rownedcards".encode())
+
+        while (len(self.p1_msg) == 0 or len(self.p2_msg) == 0):
+            pass
+        self.p1_cards = json.loads(self.p1_msg[0])
+        self.p2_cards = json.loads(self.p2_msg[0])
+        self.p1_hps = [100, 100, 100, 100]
+        self.p2_hps = [100, 100, 100, 100]
+        self.all_hps = (self.p1_hps, self.p2_hps)
+        self.p1_msg.clear()
+        self.p2_msg.clear()
+
+        print(f"Player 1 cards: {self.p1_cards}")
+        print(f"Player 2 cards: {self.p2_cards}")
+        self.curr_cards = [0, 0]
+
+
+        self.c1.send("smMATCH1".encode())
+        self.c2.send("smMATCH2".encode())
+
+        self.send_info_to_both_players(f"smu{p1.username}'{p2.username}'{self.p1_cards}'{self.p2_cards}'{self.p1_hps}'{self.p2_hps}")
 
         threading.Thread(target=self.check_connected).start()
+        self.wait_for_response("CONNECTED")
+        time.sleep(3)
+
+
+
+        # game loop begins
+        while (self.game_in_progress and any(self.p1_hps) and any(self.p2_hps)):
+            # check if current teachemon is dead
+            dead = []
+            if self.p1_hps[self.curr_cards[0]] == 0:
+                # p1 playa ded
+                dead.append(0)
+            if self.p2_hps[self.curr_cards[1]] == 0:
+                dead.append(1)
+            if len(dead) != 0:
+                print("Player Dead")
+                self.send_info_to_both_players(f"smm1{json.dumps(dead)}'10")
+                # let dead player swap
+                self.wait_for_response_starts_with(dead, ("s",), ("n",), 10)
+                p1_action = None
+                if 0 in dead:
+                    for i in range(len(self.p1_msg)):
+                        if self.p1_msg[i][0] == "s":
+                            p1_action = self.p1_msg[i]
+                    self.p1_msg.clear()
+
+                p2_action = None
+                if 1 in dead:
+                    for i in range(len(self.p2_msg)):
+                        if self.p2_msg[i][0] == "s":
+                            p2_action = self.p2_msg[i]
+                    self.p2_msg.clear()
+                actions = [p1_action, p2_action]
+
+                swaps = [None, None]
+                for i in range(2):
+                    if i in dead:
+                        action = actions[i]
+                        if action is not None and action[0] == "s":
+                            self.curr_cards[i] = int(action[1])
+                            swaps[i] = action
+                        else:
+                            alive = []
+                            for j in range(len(self.p1_hps)):
+                                if self.all_hps[i][j] > 0:
+                                    alive.append(j)
+                            choice = random.choice(alive)
+                            self.curr_cards[i] = choice
+                            swaps[i] = f"s{choice}"
+                
+                self.send_info_to_both_players(f"smm2{json.dumps(swaps)}")
+                self.wait_for_response("anicomp")
+            else:
+                print("No Players Dead")
+
+            curr_cards_data = (self.teachemon_data[self.p1_cards[self.curr_cards[0]]], self.teachemon_data[self.p2_cards[self.curr_cards[1]]])
+            # give 20 seconds to choose, tell users to pick a move
+            self.send_info_to_both_players("smgmove10")
+            self.wait_for_response_starts_with((0, 1), ("m", "i", "s"), ("n",), 12)# 2 second buffer to receive messages
+            # receive messages
+            possible_moves = ["m", "i", "s"]
+            p1_action = None
+            if self.p1_msg[0][0] in possible_moves:
+                p1_action = self.p1_msg[0]
+            self.p1_msg.clear()
+
+            p2_action = None
+            if self.p2_msg[0][0] in possible_moves:
+                p2_action = self.p2_msg[0]
+            self.p2_msg.clear()
+
+            actions = (p1_action, p2_action)
+            # handle actions
+            """
+            m = Move
+            i = Item Use
+            s = Swap
+            """
+            abilities = [None, None]
+            items = [None, None]
+            first_to_animate = -1
+            for i in range(2):
+                action = actions[i]
+                if action is not None:
+                    action_type = action[0]
+                    move_num = action[1]
+                    if action_type == "m":
+                        abilities[i] = int(move_num)
+                    elif action_type == "i":
+                        items[i] = int(move_num)
+                    elif action_type == "s":
+                        self.curr_cards[i] = int(move_num)  # swap is immediate - swap before any abilities cast
+                        first_to_animate = i
+            
+            # handle user actions
+            # items are used immediately
+            ########BLAVKLJBLKJKDJBLBJDK########
+            
+            # cast abilities
+            first_to_cast = 0
+            num_cast = 0
+            if abilities[0] is not None and abilities[1] is not None:  # if both players cast
+                first_to_cast = 0
+                num_cast = 2
+                user1speed = int(curr_cards_data[0][f"Move {abilities[0]+1} Speed"])
+                user2speed = int(curr_cards_data[1][f"Move {abilities[1]+1} Speed"])
+                if user1speed > user2speed:
+                    first_to_cast = 1
+                elif user1speed == user2speed:
+                    # coin toss
+                    first_to_cast = random.randint(0,1)
+                
+            elif abilities[1] is not None: # only user 2 casted
+                first_to_cast = 1
+                num_cast = 1
+            elif abilities[0] is not None: # only user 1 casted
+                first_to_cast = 0
+                num_cast = 1
+            if first_to_animate == -1:
+                first_to_animate = first_to_cast
+            
+            i = 0
+            print(f"Number of Casts: {num_cast}")
+            print(abilities)
+
+            print(f"P1 Queue: {self.p1_msg}")
+            print(f"P2 Queue: {self.p2_msg}")
+            while num_cast > 0:
+                target_idx = (first_to_cast + i) % 2
+                opp_idx = (first_to_cast + i + 1) % 2
+                if self.all_hps[target_idx][self.curr_cards[target_idx]] != 0:
+                    self.cast_ability(curr_cards_data[target_idx], int(abilities[target_idx]), self.curr_cards[opp_idx], self.all_hps[opp_idx])
+                i += 1
+                num_cast -= 1
+
+            self.send_info_to_both_players(f"smm0{p1_action}'{p2_action}'{first_to_animate}'{self.p1_hps}'{self.p2_hps}") # send moves
+            """
+            user action 1, user action 2, first to cast, hp1, hp2
+            """
+            # wait for users to finish animation
+            completed = self.wait_for_response("anicomp", 7) # client sends "xanicomp" (ANImation COMPlete)
+            if not all(completed):
+                if not completed[0]:
+                    self.c2.send("smDC".encode())
+                elif not completed[1]:
+                    self.c1.send("smDC".encode())
+        
+        winner = -1
+        # declare winner
+        if (any(self.p1_hps)):
+            winner = 0
+        else:
+            winner = 1
+        self.send_info_to_both_players(f"smd{winner}")
     
+    def cast_ability(self, card_data:dict, ability_idx:int, opp_curr_card: int, opp_hps:list):
+        # cast the selected ability, calculate damage
+        damage = int(card_data[f"Move {ability_idx + 1} Damage"])
+        opp_hps[opp_curr_card] -= damage
+        if opp_hps[opp_curr_card] < 0:
+            opp_hps[opp_curr_card] = 0
+        
+    def send_info_to_both_players(self, message:str):
+        self.c1.send(message.encode())
+        self.c2.send(message.encode())
+        print(f"Sent message to both players: {message}")
+    
+    def wait_for_response(self, response_key:str, max_time:int=10, delete:bool=True):
+        responses = [0, 0]
+        start_time = time.time()
+        while not all(responses) and time.time() - start_time < max_time:
+            if response_key in self.p1_msg:
+                responses[0] = 1
+                if delete:
+                    self.p1_msg.remove(response_key)
+            if response_key in self.p2_msg:
+                responses[1] = 1
+                if delete:
+                    self.p2_msg.remove(response_key)
+        
+        return responses
+        
+    
+    def wait_for_response_starts_with(self, targets:list, response_key:tuple, catch_key:tuple, max_time:int):
+        responses = [1, 1]
+        start_time = time.time()
+        for target in targets:
+            responses[target] = 0
+        while not all(responses) and time.time() - start_time < max_time:
+            if 0 in targets:
+                for msg in self.p1_msg:
+                    if msg[0] in response_key or msg[0] in catch_key:
+                        responses[0] = 1
+            if 1 in targets:
+                for msg in self.p2_msg:
+                    if msg[0] in response_key or msg[0] in catch_key:
+                        responses[1] = 1
+            time.sleep(1)
+            
+
     def check_connected(self):
         while self.server.run and self.game_in_progress:
-            if self.p1 not in self.server.logged_in_clients.values():
-                self.p2.send("smDC".encode())
+            if self.c1 not in self.server.logged_in_clients.values():
+                self.c2.send("smDC".encode())
                 self.game_in_progress = False
-            if self.p2 not in self.server.logged_in_clients.values():
-                self.p1.send("smDC".encode())
+            if self.c2 not in self.server.logged_in_clients.values():
+                self.c1.send("smDC".encode())
                 self.game_in_progress = False
 
 class BattleQueue:
     def __init__(self, server:Server):
-        self.queue : List[Tuple[socket.socket, str]] = []
+        self.queue : List[Tuple[Player, str]] = []
         self.server = server
     
     def check_queue(self):
         for i in reversed(range(len(self.queue))):
-            conn = self.queue[i][0]
+            conn = self.queue[i][0].conn
             if conn not in self.server.logged_in_clients.values():
                 self.queue.pop(i)
             
-    def add_to_queue(self, conn:socket.socket, match_string:str):
+    def add_to_queue(self, player:Player, match_string:str):
         self.check_queue()
         print(self.queue)
         for i in range(len(self.queue)):
             if self.queue[i][1] == match_string:
-                threading.Thread(target=self.server.handle_match, args=(conn, self.queue[i][0])).start()
+                threading.Thread(target=self.server.handle_match, args=(player, self.queue[i][0])).start()
                 self.queue.pop(i)
                 return
-        self.queue.append((conn, match_string))
+        self.queue.append((player, match_string))
     
     def remove_from_queue(self, conn: socket.socket):
         """

@@ -38,8 +38,9 @@ def draw_loading(screen, search_glass, circle_x, circle_y, exit_button):
     screen.blit(exit_button, (785,555))
 
 # DRAW MAIN MENU
-def draw_menu(screen, logo, battle, binder, claim, settings):
-    screen.fill("grey")
+def draw_menu(screen, logo, battle, binder, claim, settings, screen_bg):
+    #screen.fill("grey")
+    screen.blit(screen_bg, (0,0))
     screen.blit(logo, (30,50))
     screen.blit(battle, (100,262))
     screen.blit(binder, (100,332))
@@ -56,40 +57,58 @@ def draw_battle_menu(screen, logo, button_m, button_s, button_e):
 def draw_singleplayer_menu(screen):
     screen.fill("grey")
 
-def draw_battle(screen, page, player_img, enemy_img, font, battle_base, battle_blank, teacher_info):
+def draw_battle(screen:pygame.SurfaceType, page, player_img, enemy_img, font, battle_base, battle_blank, teacher_info:dict, opp_username, small_font:pygame.font.Font, other_cards:tuple):
     if page == "00":
         screen.blit(battle_base, (0,0))
     else:
         screen.blit(battle_blank, (0,0))
-    if page == "10":
-        t11 = font.render(teacher_info[3].upper(), True, "White")
-        t12 = font.render(teacher_info[7].upper(), True, "White")
-        t13 = font.render(teacher_info[11].upper(), True, "White")
-        t14 = font.render(teacher_info[0].upper(), True, "White")
+        if page == "10":
+            t11 = font.render(teacher_info["Move 1 Name"].upper(), True, "White")
+            t12 = font.render(teacher_info["Move 2 Name"].upper(), True, "White")
+            t13 = font.render(teacher_info["Move 3 Name"].upper(), True, "White")
+            t14 = font.render("Back".upper(), True, "White")
+
+        elif page == "20":
+            t11 = font.render("Item 1".upper(), True, "White")
+            t12 = font.render("Item 2".upper(), True, "White")
+            t13 = font.render("Item 3".upper(), True, "White")
+            t14 = font.render("Back".upper(), True, "White")
+            
+        elif page == "30":
+            t11 = font.render(str(other_cards[0]).upper(), True, "White")
+            t12 = font.render(str(other_cards[1]).upper(), True, "White")
+            t13 = font.render(str(other_cards[2]).upper(), True, "White")
+            t14 = font.render("Back".upper(), True, "White")
+        
+        elif page == "40":
+            t11 = font.render("FORFEIT", True, "White")
+            t12 = font.render("BACK", True, "White")
+            t13 = font.render("", True, "White")
+            t14 = font.render("", True, "White")
         screen.blit(t11, ((253-(t11.get_width()/2)),430))
         screen.blit(t12, ((747-(t12.get_width()/2)),430))
         screen.blit(t13, ((253-(t13.get_width()/2)),525))
         screen.blit(t14, ((747-(t14.get_width()/2)),525))
-
-    elif page == "20":
-        pass
-    elif page == "30":
-        pass
+    
     screen.blit(player_img, (140,135))
     screen.blit(enemy_img, (700,100))
+    
+    opp_name = small_font.render(opp_username, True, "White")
+    opp_name_rect = opp_name.get_rect(topright=(screen.get_width()-20, 20))
+    screen.blit(opp_name, opp_name_rect)
 
 # def draw_battle(screen, battle_page, battle_main):
 #     if battle_page == "Main":
 #         screen.blit(battle_main, (0, 0))
 
-def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit):
+def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num):
     screen.fill("grey")
     screen.blit(binder, (0, 0))
     x = 150
     y = 100
-   
+
     for i in range(18):
-        card_num = (i+1 + 18 * int(left / 2))
+        card_num = (i + 18 * int(left / 2))
         if card_num in cards_owned:
             screen.blit(card_images[card_num], (x, y))
         else:
@@ -108,12 +127,39 @@ def draw_binder(screen, left, right, binder, font, card_images, cards_owned, car
     screen.blit(font.render(str(right), True, (0, 0, 0)), (860, 430))
     screen.blit(button_exit, (785,555))
 
-def draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, action):
-    screen.fill("grey")
+    if highlight_num < 9:
+        screen.blit(binder_highlight, (150 + highlight_num%3*95, 100 + highlight_num//3*135))
+    else:
+        screen.blit(binder_highlight, (570 + (highlight_num-9)%3*95, 100 + (highlight_num-9)//3*135))
+
+    # print(card_zoom)
+    card_num = highlight_num + 18 * int(left/2)
+    if card_zoom > 1 and card_num in cards_owned:
+        width = 90 * card_zoom
+        height = 123 * card_zoom
+        screen.blit(pygame.transform.scale(card_images[card_num], (width, height)), (500 - (width / 2), 300 - (height / 2)))
+
+def draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, action, card_visible, current_card, card_rect, lever_rect, screen_bg, resized_coin):
+    screen.blit(screen_bg, (0,0))
     screen.blit(button_exit, (785,555))
     screen.blit(animation_list[action][frame], (250,50))
     screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
-    screen.blit(font.render(str(gacha), True, (255, 255, 255)), (480, 250))
+    screen.blit(resized_coin, (40, 5))
+    #screen.blit(font.render(str(gacha), True, (255, 255, 255)), (480, 250))
+    #pygame.draw.rect(screen, "grey", lever_rect)
+    if card_visible and current_card:
+        screen.blit(current_card, card_rect)
+
+def draw_cut(screen, button_exit, font, animation_list, frame, vs_bg):
+    if frame <= 16:
+        screen.fill("grey")
+    else:
+        vs_bg.blit(font.render("TEACHER 1", True, "White"), (50, 300))
+        vs_bg.blit(font.render("TEACHER 2", True, "White"), (450, 150))
+        vs_bg.blit(font.render("VS", True, "White"), (375, 250))
+        screen.blit(pygame.transform.scale(vs_bg, (1000, 600)), (0, 0))
+    screen.blit(button_exit, (785,555))
+    screen.blit(animation_list[frame], (0,-150))
 
 # def draw_rotating_lever(screen, new_lever, rect):
 #     screen.blit(new_lever, rect)
