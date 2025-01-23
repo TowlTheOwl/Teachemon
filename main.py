@@ -374,6 +374,7 @@ while running[0]:
                             battle_page = "00"
                     elif battle_page == "40":
                         if pointer_pos == 1:
+                            connection.send("xL".encode())
                             page = "Battle_Menu"
                         elif pointer_pos == 2:
                             battle_page = "00"

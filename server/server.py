@@ -492,10 +492,10 @@ class BattleHandler:
 
     def check_connected(self):
         while self.server.run and self.game_in_progress:
-            if self.c1 not in self.server.logged_in_clients.values():
+            if (self.c1 not in self.server.logged_in_clients.values()) or ("L" in self.p1_msg):
                 self.c2.send("smDC".encode())
                 self.game_in_progress = False
-            if self.c2 not in self.server.logged_in_clients.values():
+            if (self.c2 not in self.server.logged_in_clients.values()) or ("L" in self.p2_msg):
                 self.c1.send("smDC".encode())
                 self.game_in_progress = False
 
