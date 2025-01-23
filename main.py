@@ -137,7 +137,7 @@ lever_rect = pygame.Rect(445, 288, 40, 170)
 card_images = {}
 card_back = pygame.transform.scale(pygame.image.load("Images/card_back.png"), (90, 123))
 for i in range(59):
-    if i < 10: 
+    if i < 18: 
         card = pygame.transform.scale(pygame.image.load("Images/card_" + str(i) + ".png"), (90, 123))
     #temporary placeholder for the rest of the card b/c too lazy to load in rn
     else:
