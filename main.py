@@ -45,11 +45,8 @@ pointer_down = pygame.transform.rotate(pointer, 270)
 search_glass = pygame.image.load("Images/Magnifying Glass.png")
 binder_highlight = pygame.image.load("Images/yellow_border.png")
 placeholder_card = pygame.image.load("Images/placeholder.png")
-main_screen_bg = pygame.image.load("Images/bg.png")
-coin = pygame.image.load("Images/coin.png")
 
-resized_coin = pygame.transform.scale(coin, (112,112))
-screen_bg = pygame.transform.scale(main_screen_bg, (ScreenWidth, ScreenHeight))
+
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
 dispenser = pygame.image.load("Images/draft dispense.png")
@@ -58,6 +55,7 @@ sprite_sheet = pygame.image.load("Images/dispense sheet.png").convert_alpha()
 lever = pygame.image.load("Images/test6.png")
 lever = pygame.transform.scale(lever, (65, 364))
 rotated_lever = pygame.transform.rotate(lever, -16)
+lever_rect = rotated_lever.get_rect(center=(480, 250))
 
 
 page = "Start"
@@ -109,7 +107,7 @@ animation_list = []
 animation_steps = [1, 11]
 action = 0
 last_update = pygame.time.get_ticks()
-anim_cooldown = 120
+anim_cooldown = 200
 dispenser_frame = 0
 step = 0
 
@@ -119,12 +117,6 @@ for animation in animation_steps:
         temp_img_list.append(get_image(sprite_sheet, step, 320, 320, 1.75, back))
         step += 1
     animation_list.append(temp_img_list)
-
-#card display for claim
-card_visible = False
-current_card = None
-card_rect = None
-lever_rect = pygame.Rect(445, 288, 40, 170)
 
 #dicionary of cards for binder, key = card#, value = image. array cards_owned stores card# of cards owned
 card_images = {}
@@ -143,7 +135,9 @@ font = pygame.font.Font(None, 70)
 base_font = pygame.font.Font("teachemon.ttf", 30)
 small_font = pygame.font.Font("teachemon.ttf", 15)
 
-
+pivot_point = (450, 400) # The fixed pivot point around which to rotate
+angle = 0  # Initial rotation angle
+rotation_speed = 2  # Degrees per dispenser_frame
 
 # LOGIN SCREEN VARIABLES
 text_username = base_font.render("USERNAME", True, (0, 0, 0))
@@ -414,30 +408,16 @@ while running[0]:
                     if pointer_hover<len(userdata[2])-1: pointer_hover+=1
 
 
-        if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim": 
-            if lever_rect.collidepoint(event.pos) and not card_visible:
-                gacha = random.randint(1, 59)
-                if gacha not in cards_owned:
-                    cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
-                    connection.send(f"a{gacha}".encode())
+        if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim":
+            gacha = random.randint(1, 59)
+            if gacha not in cards_owned:
+                cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
+                connection.send(f"a{gacha}".encode())
 
-                current_card = card_images[gacha]
-                card_rect = current_card.get_rect(center=(ScreenWidth // 2 - 250, ScreenHeight // 2))
-                card_visible = True
-
-                #update animation
-                if action == 1:
-                    action -= 1
-                action += 1
-                dispenser_frame = 0
-            elif card_visible and card_rect and card_rect.collidepoint(event.pos):
-                #hide card if clicked
-                card_visible = False
-                current_card = None
-                card_rect = None
-  
-
-
+            if action == 1:
+                action -= 1
+            action += 1
+            dispenser_frame = 0
 
     ### HANDLE SERVER MESSAGES
     
@@ -509,7 +489,7 @@ while running[0]:
         
         pointer_x = 55
         pointer_y = 257 + 70 * (pointer_pos - 1)
-        draw_menu(screen, logo, button_battle, button_binder, button_claim, button_settings, screen_bg)
+        draw_menu(screen, logo, button_battle, button_binder, button_claim, button_settings)
 
     elif page == "Battle_Menu":
         if pointer_pos > 3:
@@ -631,7 +611,7 @@ while running[0]:
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
-        draw_claim(screen, button_exit, font, coins, gacha, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, lever_rect, screen_bg, resized_coin)
+        draw_claim(screen, button_exit, font, coins, gacha, animation_list, dispenser_frame, action)
 
         current_time = pygame.time.get_ticks()
         if current_time - last_update >= anim_cooldown:
