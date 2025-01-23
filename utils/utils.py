@@ -59,7 +59,7 @@ def list_to_card(l):
 #             display_box(screen, "BLANK PASSWORD", font, 3)
 #         return "Signup"
 
-def display_box(screen:pygame.Surface, text, font:pygame.font.FontType, seconds):
+def display_box(screen:pygame.Surface, text, font:pygame.font.FontType, seconds=0):
     center_x, center_y = get_center()
     rect = pygame.Rect(0, 0, 800, 300)
     rect.center = (center_x, center_y)
@@ -68,7 +68,8 @@ def display_box(screen:pygame.Surface, text, font:pygame.font.FontType, seconds)
     text_rect = text_disp.get_rect(center=(center_x, center_y))
     screen.blit(text_disp, text_rect)
     pygame.display.flip()
-    pygame.time.wait(seconds*1000)
+    if seconds != 0:
+        pygame.time.wait(seconds*1000)
 
 def get_center():
     center_x = 500
@@ -106,60 +107,66 @@ def check_received_data(received, expecting):
 def handle_server_connection(conn:socket.socket, running, messages, userdata):
     """
     userdata: [username, password, card: list]
-    messages: [login return, signup return, queue status]
+    messages: [login return, signup return, queue status, match_info, timer_on, timer_seconds, player_num]
     """
     while running[0]:
         try:
-            msg = conn.recv(1024).decode()
-            if not msg:
+            received = conn.recv(1024).decode()
+            if not received:
                 print("Connection closed by the server.")
                 conn.close()
-            print(f"Received: {msg}")
-            if msg == "cc":
-                # server is checking if we are still connected
-                conn.send("1".encode())
-            
-            elif msg[0] == "r":
-                # server is requesting data
-                to_parse = msg[1:]
-                to_parse = to_parse.split(",")
-                to_send = ""
-                for requested_info in to_parse:
-                    if len(to_send) != 0:
-                        to_send += ","
-                    if requested_info == "username":
-                        to_send += str(userdata[0])
-                    elif requested_info == "password":
-                        to_send += str(userdata[1])
-                    else:
-                        raise Exception(f"Unknown info requested by the server: {requested_info}")
-                conn.send(to_send.encode())
-                print(f"Sent: {to_send}")
-            
-            elif msg[0] == "s":
-                # server is sending info
-                info = msg[1:]
-                if info[0] == "l":
-                    # server responded to login request
-                    messages[0] = info[1]
-                elif info[0] == "s":
-                    # server responded to signup request
-                    messages[1] = info[1]
-                elif info[0] == "m":
-                    # server is sending match info
-                    message = info[1:]
-                    if message == "SEARCHING":
-                        messages[2] = False
-                    elif message == "MATCH":
-                        messages[2] = True
-                    elif message == "DC":
-                        messages[3] = "DC"
-                elif info[0] == "c":
-                    # server sent card info
-                    message = info[1:]
-                    userdata[2][:] = [int(e) for e in message.split(",")]
-            else:
-                raise Exception(f"unexpected message, received {msg}")
+            print(f"Received: {received}")
+            for msg in received.split(";"):
+                if msg == "cc":
+                    # server is checking if we are still connected
+                    conn.send("1".encode())
+                
+                elif msg[0] == "r":
+                    # server is requesting data
+                    to_parse = msg[1:]
+                    to_parse = to_parse.split(",")
+                    to_send = ""
+                    for requested_info in to_parse:
+                        if len(to_send) != 0:
+                            to_send += ","
+                        if requested_info == "username":
+                            to_send += str(userdata[0])
+                        elif requested_info == "password":
+                            to_send += str(userdata[1])
+                        elif requested_info == "ownedcards":
+                            to_send += "x"+str(userdata[3])
+                        else:
+                            raise Exception(f"Unknown info requested by the server: {requested_info}")
+                    conn.send(to_send.encode())
+                    print(f"Sent: {to_send}")
+                
+                elif msg[0] == "s":
+                    # server is sending info
+                    info = msg[1:]
+                    if info[0] == "l":
+                        # server responded to login request
+                        messages[0] = info[1]
+                    elif info[0] == "s":
+                        # server responded to signup request
+                        messages[1] = info[1]
+                    elif info[0] == "m":
+                        # server is sending match info
+                        message = info[1:]
+                        if message == "SEARCHING":
+                            messages[2] = False
+                        elif message[0:5] == "MATCH":
+                            messages[2] = True
+                            messages[6] = message[5]
+                        elif message == "DC":
+                            messages[3] = "DC"
+                        elif message[0] in ("u", "g", "m", "d"):
+                            messages[3] = message
+                    elif info[0] == "c":
+                        # server sent card info
+                        message = info[1:]
+                        userdata[2][:] = [int(e) for e in message.split(",")]
+                else:
+                    raise Exception(f"unexpected message, received {msg}")
         except Exception as e:
             if isinstance(e, ConnectionResetError) or isinstance(e, ConnectionAbortedError) or isinstance(e, OSError):
                 print("SERVER CONNECTION IS CLOSED, TERMINATING")
