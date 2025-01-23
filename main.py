@@ -874,6 +874,7 @@ while running[0]:
                 dispenser_frame = 0
 
     elif page == "Cut":
+        pointer_on = False
         draw_cut(screen, button_exit, fontx3, cut_scene_animation, cut_scene_frame, vs_bg,)
         
         current_time = pygame.time.get_ticks()
