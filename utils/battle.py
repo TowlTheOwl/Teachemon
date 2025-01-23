@@ -28,7 +28,7 @@ class Timer:
         self.sprite = None
         self.rect = None
         threading.Thread(target=self.countdown).start()
-    
+
     def countdown(self):
         while self.run[0]:
             self.update_sprite()
