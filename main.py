@@ -41,6 +41,7 @@ button_multiplayer = pygame.image.load("Images/multiplayer x5.png")
 button_exit = pygame.image.load("Images/exit x5.png")
 battle_main = pygame.image.load("Images/battle_main.png")
 battle_00 = pygame.image.load("Images/battle_00.png")
+vs_bg = pygame.image.load("Images/vs_bg.png")
 pointer = pygame.image.load("Images/pointer x5.png")
 pointer_up = pygame.transform.rotate(pointer, 90)
 pointer_down = pygame.transform.rotate(pointer, 270)
@@ -60,6 +61,7 @@ sprite_sheet = pygame.image.load("Images/dispense sheet.png").convert_alpha()
 lever = pygame.image.load("Images/test6.png")
 lever = pygame.transform.scale(lever, (65, 364))
 rotated_lever = pygame.transform.rotate(lever, -16)
+cut_scene_sheet = pygame.image.load("Images/cut_scene_sheet.png").convert_alpha()
 
 
 page = "Start"
@@ -102,10 +104,11 @@ highlight_num = 0
 
 #sprite animation for card dispenser
 back = (0,0,0)
-def get_image(sheet, dispenser_frame, width, height, scale, color):
+
+def get_image(sheet, frame, width, height, scale, color):
     image = pygame.Surface((width, height)).convert_alpha()
-    image.blit(sheet, (0,0), ((dispenser_frame * width), 0, width, height))
-    image.blit(sheet, (0,0), ((dispenser_frame * width), 0, width, height))
+    image.blit(sheet, (0,0), ((frame * width), 0, width, height))
+    image.blit(sheet, (0,0), ((frame * width), 0, width, height))
     image = pygame.transform.scale(image, (width * scale, height * scale))
     image.set_colorkey(color)
 
@@ -127,6 +130,14 @@ for animation in animation_steps:
         step += 1
     animation_list.append(temp_img_list)
 
+cut_scene_animation = []
+cut_scene_frame = 0
+cut_scene_cooldown = 75
+for i in range(33):
+    cut_scene_animation.append(get_image(cut_scene_sheet, i, 1000, 600, 1.3, back))
+
+#variable for card zoom factor
+card_zoom = 1
 #card display for claim
 card_visible = False
 current_card = None
@@ -143,7 +154,7 @@ for i in range(59):
     else:
         card = pygame.transform.scale(pygame.image.load("Images/card_placeholder.png"), (90, 123))
 
-    card_images[i+1] = card
+    card_images[i] = card
 
 font = pygame.font.Font(None, 70)
 # Font Setup
@@ -230,6 +241,8 @@ while running[0]:
                     pointer_pos = 2
                 elif highlight_num%9//3 < 2:
                     highlight_num += 3
+                if card_zoom >= 3:
+                    card_zoom = 1
             elif page == "Choose Card":
                 if pointer_pos <=4:
                     pointer_pos = 5
@@ -248,6 +261,8 @@ while running[0]:
                     pointer_pos = 1
                 elif highlight_num%9//3 > 0:
                     highlight_num -= 3
+                if card_zoom >= 3:
+                    card_zoom = 1
             elif page == "Choose Card":
                 if pointer_pos == 5:
                     pointer_pos = 1
@@ -377,6 +392,14 @@ while running[0]:
             elif page == "Binder":
                 if pointer_pos == 2:
                     page = "Menu"
+                
+                if card_zoom < 3:
+                    card_zoom += 0.2
+                if card_zoom >= 3:
+                    card_zoom = 1
+                
+        
+
             elif page == "Login" or page == "Signup":
                 if pointer_pos == 3:
                     # update user data and requeset login/signup
@@ -413,6 +436,8 @@ while running[0]:
                     elif left_page + 1 > 2:
                         left_page -= 2
                         highlight_num = 11 + highlight_num
+                    if card_zoom >= 3:
+                        card_zoom = 1
             elif page == "Choose Card":
                 if pointer_pos <= 4 and pointer_pos > 1:
                     pointer_pos -= 1
@@ -433,6 +458,8 @@ while running[0]:
                     elif left_page + 1 < 8:
                         left_page += 2
                         highlight_num = highlight_num % 9 - 2
+                    if card_zoom >= 3:
+                        card_zoom = 1
 
             elif page == "Choose Card":
                 if pointer_pos < 4:
@@ -604,7 +631,7 @@ while running[0]:
             page = "Match Found"
             player_num = int(server_messages[6])-1
             opp_num = (player_num+1)%2
-            timer = Timer(20, screen, running, base_font, (center_x, 250))
+            timer = None
             timer_on = False
         else:
             draw_loading(screen, search_glass, circle_x, circle_y, button_exit)
@@ -629,14 +656,12 @@ while running[0]:
                     opp_hps = json.loads(user_datas[opp_num + 4])
                     curr_cards = [0, 0]
                     server_messages[3] = None
-                    page = "Battle"
                     battle_page = "00"
                     game_status = None
                     other_cards = selected_cards.copy()
                     other_cards.pop(0)
                     other_cards = tuple(other_cards)
                     time.sleep(3)
-                    connection.send("xCONNECTED".encode())
                     pointer_pos = 1
                     selected_move = None
                     first_frame = False
@@ -649,6 +674,7 @@ while running[0]:
                     must_swap = False
                     actions = [None, None]
                     waiting = False
+                    page = "Cut"
                 else:
                     print(f"Wart {server_messages[3]}")
 
@@ -814,12 +840,16 @@ while running[0]:
             pointer_on = True
         else:
             pointer_on = False
-        draw_binder(screen, left_page, left_page + 1, resized_binder, font, card_images, cards_owned, card_back, button_exit)
+        if card_zoom > 1 and card_zoom <= 3:
+            card_zoom += 0.2
+        draw_binder(screen, left_page, left_page + 1, resized_binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num)
 
-        if highlight_num < 9:
-            screen.blit(binder_highlight, (150 + highlight_num%3*95, 100 + highlight_num//3*135))
-        else:
-            screen.blit(binder_highlight, (570 + (highlight_num-9)%3*95, 100 + (highlight_num-9)//3*135))
+        
+        
+        # if highlight_num < 9:
+        #    screen.blit(binder_highlight, (150 + highlight_num%3*95, 100 + highlight_num//3*135))
+        # else:
+        #    screen.blit(binder_highlight, (570 + (highlight_num-9)%3*95, 100 + (highlight_num-9)//3*135))
 
         # for future - making card bigger when pressed enter 
         #if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN and not pointer_pos == 2:
@@ -843,6 +873,20 @@ while running[0]:
             elif dispenser_frame >= len(animation_list[action]):
                 dispenser_frame = 0
 
+    elif page == "Cut":
+        draw_cut(screen, button_exit, fontx3, cut_scene_animation, cut_scene_frame, vs_bg,)
+        
+        current_time = pygame.time.get_ticks()
+        if current_time - last_update >= cut_scene_cooldown:
+            if cut_scene_frame == 32:
+                pygame.time.wait(1500)
+                cut_scene_frame = 0
+                page = "Battle"
+                connection.send("xCONNECTED".encode())
+            else:
+                cut_scene_frame += 1
+                last_update = current_time
+            
        
     elif page == "Settings":
         pointer_on = True
