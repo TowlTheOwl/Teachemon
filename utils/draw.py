@@ -158,7 +158,7 @@ def draw_cut(screen, button_exit, font, animation_list, frame, vs_bg):
         vs_bg.blit(font.render("TEACHER 2", True, "White"), (450, 150))
         vs_bg.blit(font.render("VS", True, "White"), (375, 250))
         screen.blit(pygame.transform.scale(vs_bg, (1000, 600)), (0, 0))
-    screen.blit(button_exit, (785,555))
+    # screen.blit(button_exit, (785,555))
     screen.blit(animation_list[frame], (0,-150))
 
 # def draw_rotating_lever(screen, new_lever, rect):

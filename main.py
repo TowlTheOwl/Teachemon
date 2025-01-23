@@ -812,7 +812,7 @@ while running[0]:
                     if timer.time == 0:
                         # send selected move to the server
                         if selected_move is not None:
-                            sent_move = ("n", "n", "s")[int(selected_move[0])-1] + str(int(selected_move[0])-1)
+                            sent_move = ("n", "n", "s")[int(selected_move[0])-1] + str(int(selected_move[1])-1)
                         else:
                             sent_move = "n0"
                         connection.send(f"x{sent_move}".encode())
