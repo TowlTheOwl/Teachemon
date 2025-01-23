@@ -38,9 +38,8 @@ def draw_loading(screen, search_glass, circle_x, circle_y, exit_button):
     screen.blit(exit_button, (785,555))
 
 # DRAW MAIN MENU
-def draw_menu(screen, logo, battle, binder, claim, settings, screen_bg):
-    #screen.fill("grey")
-    screen.blit(screen_bg, (0,0))
+def draw_menu(screen, logo, battle, binder, claim, settings):
+    screen.fill("grey")
     screen.blit(logo, (30,50))
     screen.blit(battle, (100,262))
     screen.blit(binder, (100,332))
@@ -109,18 +108,13 @@ def draw_binder(screen, left, right, binder, font, card_images, cards_owned, car
     screen.blit(font.render(str(right), True, (0, 0, 0)), (860, 430))
     screen.blit(button_exit, (785,555))
 
-def draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, action, card_visible, current_card, card_rect, lever_rect, screen_bg, resized_coin):
-    screen.blit(screen_bg, (0,0))
+def draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, action):
+    screen.fill("grey")
     screen.blit(button_exit, (785,555))
     screen.blit(animation_list[action][frame], (250,50))
     screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
-    screen.blit(resized_coin, (40, 5))
-    #screen.blit(font.render(str(gacha), True, (255, 255, 255)), (480, 250))
-    #pygame.draw.rect(screen, "grey", lever_rect)
-    if card_visible and current_card:
-        screen.blit(current_card, card_rect)
+    screen.blit(font.render(str(gacha), True, (255, 255, 255)), (480, 250))
 
-       
 # def draw_rotating_lever(screen, new_lever, rect):
 #     screen.blit(new_lever, rect)
 
