@@ -2,14 +2,14 @@ import pygame
 from utils import *
 
 # START SCREEN
-def draw_start(screen: pygame.Surface, logo, button_login, button_signup):
-    screen.fill("grey")
+def draw_start(screen: pygame.Surface, logo, button_login, button_signup, login_bg):
+    screen.blit(login_bg, (0,0))
     screen.blit(logo, (30,50))
     screen.blit(button_login, (100,262))
     screen.blit(button_signup, (100,332))
 
 # LOGIN SCREEN
-def draw_login(screen: pygame.Surface, events, arrow_pos, username_tup, password_tup, login_button, back_tup, font):
+def draw_login(screen: pygame.Surface, events, arrow_pos, username_tup, password_tup, login_button, back_tup, font, login_bg):
     """
     Parameters
     screen: displays screen
@@ -20,7 +20,7 @@ def draw_login(screen: pygame.Surface, events, arrow_pos, username_tup, password
     login_button:tuple of (text_login_bg or text_signup_bg, text_login or text_signup, text_login_rect or text_signup_rect)
     back_tup: tupble of (text_back, text_back_rect)
     """
-    screen.fill("grey")
+    screen.blit(login_bg, (0,0))
     screen.blit(username_tup[0], username_tup[1])
     screen.blit(password_tup[0], password_tup[1])
     pygame.draw.rect(screen, (66, 245, 152), login_button[0], border_radius=5)
@@ -39,7 +39,6 @@ def draw_loading(screen, search_glass, circle_x, circle_y, exit_button):
 
 # DRAW MAIN MENU
 def draw_menu(screen, logo, battle, binder, claim, settings, screen_bg):
-    #screen.fill("grey")
     screen.blit(screen_bg, (0,0))
     screen.blit(logo, (30,50))
     screen.blit(battle, (100,262))
@@ -162,16 +161,33 @@ def draw_binder(screen, left, right, binder, font, card_images, cards_owned, car
         height = 123 * card_zoom
         screen.blit(pygame.transform.scale(card_images[card_num], (width, height)), (500 - (width / 2), 300 - (height / 2)))
 
-def draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, action, card_visible, current_card, card_rect, lever_rect, screen_bg, resized_coin):
+def draw_claim(screen, button_exit, font, coins, animation_list, frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin, 
+               alpha, card_started, card_anim, max_cardanim, fade_started, 
+               cardanim_list, cardanim_frame, display_started):
     screen.blit(screen_bg, (0,0))
     screen.blit(button_exit, (785,555))
     screen.blit(animation_list[action][frame], (250,50))
     screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
     screen.blit(resized_coin, (40, 5))
-    #screen.blit(font.render(str(gacha), True, (255, 255, 255)), (480, 250))
-    #pygame.draw.rect(screen, "grey", lever_rect)
+    fade_surface = pygame.Surface((screen.get_width(), screen.get_height()), pygame.SRCALPHA)
+
+    #faded overlay
     if card_visible and current_card:
-        screen.blit(current_card, card_rect)
+        fade_surface.fill((255, 255, 255, alpha)) 
+        screen.blit(fade_surface, (0, 0)) 
+    #card animation display
+    if display_started:
+        anim_x = screen.get_width() // 2 - cardanim_list[0].get_width() // 2
+        anim_y = screen.get_height() // 2 - cardanim_list[0].get_height() // 2
+        screen.blit(cardanim_list[cardanim_frame], (anim_x, anim_y))
+    #scaling card up
+    if card_started:
+        scale = 1 + (card_anim / max_cardanim) * 1
+        new_card = pygame.transform.smoothscale(current_card, (int(card_rect.width * scale), int(card_rect.height * scale)))
+        new_rect = new_card.get_rect(center=card_rect.center)
+        card_rect = new_rect
+        screen.blit(new_card, new_rect)
+       
 
 def draw_cut(screen, button_exit, font, animation_list, frame, vs_bg, player_name, opp_name):
     if frame <= 16:
@@ -183,9 +199,6 @@ def draw_cut(screen, button_exit, font, animation_list, frame, vs_bg, player_nam
         screen.blit(pygame.transform.scale(vs_bg, (1000, 600)), (0, 0))
     # screen.blit(button_exit, (785,555))
     screen.blit(animation_list[frame], (0,-150))
-
-# def draw_rotating_lever(screen, new_lever, rect):
-#     screen.blit(new_lever, rect)
 
 def draw_settings(screen, button_credits, button_exit):
     screen.fill("grey")

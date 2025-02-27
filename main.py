@@ -48,18 +48,21 @@ pointer_down = pygame.transform.rotate(pointer, 270)
 search_glass = pygame.image.load("Images/Magnifying Glass.png")
 binder_highlight = pygame.image.load("Images/yellow_border.png")
 placeholder_card = pygame.image.load("Images/placeholder.png")
-main_screen_bg = pygame.image.load("Images/bg.png")
+main_screen_bg = pygame.image.load("Images/mainbg.png")
 coin = pygame.image.load("Images/coin.png")
+login = pygame.image.load("Images/loginbg.png")
 animation_bg = pygame.image.load("Images/animation_bg.png")
 animation_bg = pygame.transform.scale_by(animation_bg, 50)
 
 resized_coin = pygame.transform.scale(coin, (112,112))
+login_bg = pygame.transform.scale(login, (ScreenWidth, ScreenHeight))
 screen_bg = pygame.transform.scale(main_screen_bg, (ScreenWidth, ScreenHeight))
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
 dispenser = pygame.image.load("Images/draft dispense.png")
 resized_dispenser = pygame.transform.scale(dispenser, (600, 600))
 sprite_sheet = pygame.image.load("Images/dispense sheet.png").convert_alpha()
+cardanim_sheet = pygame.image.load("Images/cardanim.png").convert_alpha()
 lever = pygame.image.load("Images/test6.png")
 lever = pygame.transform.scale(lever, (65, 364))
 rotated_lever = pygame.transform.rotate(lever, -16)
@@ -105,6 +108,16 @@ highlight_x = 95
 highlight_y = 73
 highlight_num = 0
 
+#animaiton for card reveal
+alpha = 0
+fade_started = False
+fading_in = False
+fade_speed = 5
+WHITE = (225, 225, 225)
+card_started = False
+card_anim = 0
+max_cardanim = 30
+
 #sprite animation for card dispenser
 back = (0,0,0)
 
@@ -117,7 +130,7 @@ def get_image(sheet, frame, width, height, scale, color):
 
     return image
 
-#create animation list
+#animation list for card dispenser
 animation_list = []
 animation_steps = [1, 11]
 action = 0
@@ -125,6 +138,13 @@ last_update = pygame.time.get_ticks()
 anim_cooldown = 120
 dispenser_frame = 0
 step = 0
+
+display_started = False
+cardanim_list = []
+cardanim_frame = 0
+cardanim_cooldown = 75
+for i in range(11):
+    cardanim_list.append(get_image(cardanim_sheet, i, 500, 300, 2, back))
 
 for animation in animation_steps:
     temp_img_list = []
@@ -489,14 +509,20 @@ while running[0]:
         if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim": 
             if lever_rect.collidepoint(event.pos) and not card_visible:
                 gacha = random.randint(1, 59)
+                
                 if gacha not in cards_owned:
                     cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
                     connection.send(f"a{gacha}".encode())
 
                 current_card = card_images[gacha]
-                card_rect = current_card.get_rect(center=(ScreenWidth // 2 - 250, ScreenHeight // 2))
+                card_rect = current_card.get_rect(center=(ScreenWidth // 2, ScreenHeight // 2))
                 card_visible = True
-
+                #fade effect
+                alpha = 0
+                fading_in = True
+                #card display animation
+                dispalay_started = False
+                cardanim_frame = 0
                 #update animation
                 if action == 1:
                     action -= 1
@@ -504,9 +530,12 @@ while running[0]:
                 dispenser_frame = 0
             elif card_visible and card_rect and card_rect.collidepoint(event.pos):
                 #hide card if clicked
+                display_started = False
                 card_visible = False
                 current_card = None
                 card_rect = None
+                card_started = False
+                card_anim = 0
   
 
 
@@ -521,7 +550,7 @@ while running[0]:
         
         pointer_x = 55
         pointer_y = 257 + 70 * (pointer_pos-1)
-        draw_start(screen, logo, button_login, button_signup)
+        draw_start(screen, logo, button_login, button_signup, login_bg)
         
     elif page == "Login":
         pointer_on = True
@@ -533,7 +562,7 @@ while running[0]:
         else:
             pointer_y = 400-50-22 + (pointer_pos-2)*100
         draw_login(screen, events, pointer_pos, (text_username, text_username_rect, username_box), 
-                   (text_password, text_password_rect, password_box), (text_login_bg, text_login, text_login_rect), (text_back, text_back_rect), base_font)
+                   (text_password, text_password_rect, password_box), (text_login_bg, text_login, text_login_rect), (text_back, text_back_rect), base_font, login_bg)
 
         
         # check login response
@@ -561,7 +590,7 @@ while running[0]:
         else:
             pointer_y = 400-50-22 + (pointer_pos-2)*100
         draw_login(screen, events, pointer_pos, (text_username, text_username_rect, username_box), 
-                   (text_password, text_password_rect, password_box), (text_signup_bg, text_signup, text_signup_rect), (text_back, text_back_rect), base_font)
+                   (text_password, text_password_rect, password_box), (text_signup_bg, text_signup, text_signup_rect), (text_back, text_back_rect), base_font, login_bg)
         
         # check signup response
         if server_messages[1] is not None:
@@ -1034,15 +1063,38 @@ while running[0]:
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
-        
-        draw_claim(screen, button_exit, font, coins, gacha, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, lever_rect, screen_bg, resized_coin)
-
+        draw_claim(screen, button_exit, font, coins, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin,
+                   alpha, card_started, card_anim, max_cardanim, fade_started,
+                   cardanim_list, cardanim_frame, display_started)
         current_time = pygame.time.get_ticks()
+
+        if card_visible:
+            if fading_in:
+                alpha += fade_speed
+                if alpha >= 170:
+                    alpha = 170              
+                    fading_in = False 
+                    card_started = True
+                    card_anim = 0
+        if display_started:
+            if current_time - last_update >= cardanim_cooldown:
+                cardanim_frame += 1
+                last_update = current_time
+                if cardanim_frame >= len(cardanim_list):  #reset animation if it reaches the last frame
+                    cardanim_frame = 0
+        
+        if card_started:
+            card_anim += 1
+            if card_anim >= max_cardanim:
+                card_anim = max_cardanim
+                display_started = True
+
         if current_time - last_update >= anim_cooldown:
             dispenser_frame += 1
             last_update = current_time
             if dispenser_frame == 11:
                 action = (action + 1) % len(animation_list)
+                #fade_started = True
                 dispenser_frame = 0          
             elif dispenser_frame >= len(animation_list[action]):
                 dispenser_frame = 0
