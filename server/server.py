@@ -345,7 +345,7 @@ class BattleHandler:
             else:
                 print("No Players Dead")
 
-            curr_cards_data = (self.teachemon_data[self.p1_cards[self.curr_cards[0]]], self.teachemon_data[self.p2_cards[self.curr_cards[1]]])
+            curr_cards_data = (self.teachemon_data[self.p1_cards[self.curr_cards[0]]-1], self.teachemon_data[self.p2_cards[self.curr_cards[1]]-1])
             # give 20 seconds to choose, tell users to pick a move
             self.send_info_to_both_players("smgmove10")
             self.wait_for_response_starts_with((0, 1), ("m", "i", "s"), ("n",), 12)# 2 second buffer to receive messages
@@ -430,7 +430,7 @@ class BattleHandler:
             user action 1, user action 2, first to cast, hp1, hp2
             """
             # wait for users to finish animation
-            completed = self.wait_for_response("anicomp", 7) # client sends "xanicomp" (ANImation COMPlete)
+            completed = self.wait_for_response("anicomp", 30) # client sends "xanicomp" (ANImation COMPlete)
             if not all(completed):
                 if not completed[0]:
                     self.c2.send("smDC".encode())
@@ -492,10 +492,10 @@ class BattleHandler:
 
     def check_connected(self):
         while self.server.run and self.game_in_progress:
-            if self.c1 not in self.server.logged_in_clients.values():
+            if (self.c1 not in self.server.logged_in_clients.values()) or ("L" in self.p1_msg):
                 self.c2.send("smDC".encode())
                 self.game_in_progress = False
-            if self.c2 not in self.server.logged_in_clients.values():
+            if (self.c2 not in self.server.logged_in_clients.values()) or ("L" in self.p2_msg):
                 self.c1.send("smDC".encode())
                 self.game_in_progress = False
 
