@@ -75,6 +75,7 @@ send = ""
 receive = ""
 sbattle_page = "00"
 battle_page = "00"
+fontx1 = pygame.font.Font("Teachemon.ttf", 15)
 fontx3 = pygame.font.Font("Teachemon.ttf", 21)
 fontx5 = pygame.font.Font("Teachemon.ttf", 35)
 
@@ -150,8 +151,8 @@ lever_rect = pygame.Rect(445, 288, 40, 170)
 card_images = {}
 card_back = pygame.transform.scale(pygame.image.load("Images/card_back.png"), (90, 123))
 for i in range(59):
-    if i < 18: 
-        card = pygame.image.load("Images/card_" + str(i) + ".png")
+    if i < 17: 
+        card = pygame.transform.scale(pygame.image.load("Images/card_" + str(i) + ".png"), (90, 123))
     #temporary placeholder for the rest of the card b/c too lazy to load in rn
     else:
         card = pygame.image.load("Images/card_placeholder.png")
@@ -627,7 +628,7 @@ while running[0]:
             pointer_x = 740
             pointer_y = 550
         
-        draw_choose_your_team(screen, button_exit, text_choose_your_team, text_choose_your_team_rect, text_go, text_go_bg, text_go_rect, selected_cards, base_font)
+        draw_choose_your_team(screen, button_exit, text_choose_your_team, text_choose_your_team_rect, text_go, text_go_bg, text_go_rect, selected_cards, base_font, card_images)
 
         # draw selected card pointer
         screen.blit(pointer_down, ((pointer_selected * 200)-22, 60))
@@ -638,7 +639,7 @@ while running[0]:
             screen.blit(pointer_down, (478, 270))
             screen.blit(pointer_up, (478, 480))
         
-        draw_card_wheel(screen, userdata[2], selected_cards, pointer_hover, base_font, small_font)
+        draw_card_wheel(screen, userdata[2], selected_cards, pointer_hover, base_font, small_font, card_images)
 
     elif page == "Loading":
         pointer_on = True
@@ -1005,7 +1006,8 @@ while running[0]:
             pointer_on = False
         if card_zoom > 1 and card_zoom <= 3:
             card_zoom += 0.2
-        draw_binder(screen, left_page, left_page + 1, resized_binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num)
+        draw_binder(screen, left_page, left_page + 1, resized_binder, fontx1, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data, fontx1)
+        
 
         
         
@@ -1050,7 +1052,7 @@ while running[0]:
         draw_trade(screen, cards_owned, card_images, button_exit, big_font, binder_highlight, pointer_up)
     elif page == "Cut":
         pointer_on = False
-        draw_cut(screen, button_exit, fontx3, cut_scene_animation, cut_scene_frame, vs_bg, userdata[0], opponent_username)
+        draw_cut(screen, button_exit, fontx3, cut_scene_animation, cut_scene_frame, vs_bg, main_screen_bg, userdata[0], opponent_username)
         
         current_time = pygame.time.get_ticks()
         if current_time - last_update >= cut_scene_cooldown:
