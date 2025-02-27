@@ -54,10 +54,33 @@ def draw_battle_menu(screen, logo, button_m, button_s, button_e):
     screen.blit(button_s, (100, 332))
     screen.blit(button_e, (100, 402))
 
+def draw_claim_menu(screen, logo, gacha, trade, exit):
+    screen.fill("grey")
+    screen.blit(logo, (30, 50))
+    screen.blit(gacha, (100, 262))
+    screen.blit(trade, (100, 332))
+    screen.blit(exit, (100, 402))
+
+def draw_trade(screen, cards_owned, cards, exit, font, highlight, pointer):
+    screen.fill("grey")
+    screen.blit(font.render("YOUR TRADE:", True, "Black"), (50, 100))
+
+    if len(cards_owned) == 0: 
+        screen.blit(font.render("NO CARDS", True, "Black"), (50, 200))
+    count = 0
+    for i in range(len(cards_owned)):
+            screen.blit(cards.get(i), (40+count*190, 200))
+            count += 1
+    screen.blit(exit, (785,555))
+    screen.blit(pygame.transform.scale(highlight, (165, 225)), (40, 200))
+    screen.blit(pointer, (100, 430))
+
+        
+
 def draw_singleplayer_menu(screen):
     screen.fill("grey")
 
-def draw_battle(screen:pygame.SurfaceType, page, player_img, enemy_img, font, battle_base, battle_blank, teacher_info:dict, opp_username, small_font:pygame.font.Font, other_cards:tuple):
+def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank, teacher_info:dict, opp_username, small_font:pygame.font.Font, other_cards:tuple):
     if page == "00":
         screen.blit(battle_base, (0,0))
     else:
@@ -90,9 +113,6 @@ def draw_battle(screen:pygame.SurfaceType, page, player_img, enemy_img, font, ba
         screen.blit(t13, ((253-(t13.get_width()/2)),525))
         screen.blit(t14, ((747-(t14.get_width()/2)),525))
     
-    screen.blit(player_img, (140,135))
-    screen.blit(enemy_img, (700,100))
-    
     opp_name = small_font.render(opp_username, True, "White")
     opp_name_rect = opp_name.get_rect(topright=(screen.get_width()-20, 20))
     screen.blit(opp_name, opp_name_rect)
@@ -104,13 +124,16 @@ def draw_battle(screen:pygame.SurfaceType, page, player_img, enemy_img, font, ba
 def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num):
     screen.fill("grey")
     screen.blit(binder, (0, 0))
+
     x = 150
     y = 100
 
     for i in range(18):
         card_num = (i + 18 * int(left / 2))
+        print(card_num)
+        print(cards_owned)
         if card_num in cards_owned:
-            screen.blit(card_images[card_num], (x, y))
+            screen.blit(pygame.transform.scale(card_images[card_num], (90, 123)), (x, y))
         else:
             screen.blit(card_back, (x, y))
         
@@ -150,12 +173,12 @@ def draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, a
     if card_visible and current_card:
         screen.blit(current_card, card_rect)
 
-def draw_cut(screen, button_exit, font, animation_list, frame, vs_bg):
+def draw_cut(screen, button_exit, font, animation_list, frame, vs_bg, player_name, opp_name):
     if frame <= 16:
         screen.fill("grey")
     else:
-        vs_bg.blit(font.render("TEACHER 1", True, "White"), (50, 300))
-        vs_bg.blit(font.render("TEACHER 2", True, "White"), (450, 150))
+        vs_bg.blit(font.render(player_name, True, "White"), (50, 300))
+        vs_bg.blit(font.render(opp_name, True, "White"), (450, 150))
         vs_bg.blit(font.render("VS", True, "White"), (375, 250))
         screen.blit(pygame.transform.scale(vs_bg, (1000, 600)), (0, 0))
     # screen.blit(button_exit, (785,555))
