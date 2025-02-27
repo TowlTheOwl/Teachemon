@@ -148,16 +148,17 @@ lever_rect = pygame.Rect(445, 288, 40, 170)
 card_images = {}
 card_back = pygame.transform.scale(pygame.image.load("Images/card_back.png"), (90, 123))
 for i in range(59):
-    if i < 10: 
-        card = pygame.transform.scale(pygame.image.load("Images/card_" + str(i) + ".png"), (90, 123))
+    if i < 18: 
+        card = pygame.image.load("Images/card_" + str(i) + ".png")
     #temporary placeholder for the rest of the card b/c too lazy to load in rn
     else:
-        card = pygame.transform.scale(pygame.image.load("Images/card_placeholder.png"), (90, 123))
+        card = pygame.image.load("Images/card_placeholder.png")
 
     card_images[i] = card
 
 font = pygame.font.Font(None, 70)
 # Font Setup
+big_font = pygame.font.Font("teachemon.ttf", 38)
 base_font = pygame.font.Font("teachemon.ttf", 30)
 small_font = pygame.font.Font("teachemon.ttf", 15)
 
@@ -205,7 +206,6 @@ server_messages = [None, None, None, None, None, None, None] # check utils
 selected_cards = [None, None, None, None]
 userdata = [username, password, [], selected_cards] # username, password, owned cards, selected cards
 cards_owned = userdata[2]
-
 must_swap = False
 opponent_username = None
 
@@ -305,6 +305,19 @@ while running[0]:
                 elif pointer_pos == 2:
                     page = "SBattle"
                 elif pointer_pos == 3:
+                    page = "Menu"
+            elif page == "Claim":
+                if pointer_pos == 1:
+                    page = "Gacha"
+                elif pointer_pos == 2:
+                    page = "Trade"
+                elif pointer_pos == 3:
+                    page = "Menu"
+            elif page == "Gacha":
+                if pointer_pos == 1:
+                    page = "Menu"
+            elif page == "Trade":
+                if pointer_pos == 1:
                     page = "Menu"
             elif page == "Choose Card":
                 keep_pointer = True
@@ -439,6 +452,7 @@ while running[0]:
                         highlight_num = 11 + highlight_num
                     if card_zoom >= 3:
                         card_zoom = 1
+
             elif page == "Choose Card":
                 if pointer_pos <= 4 and pointer_pos > 1:
                     pointer_pos -= 1
@@ -858,10 +872,19 @@ while running[0]:
 
 
     elif page == "Claim":
+        if pointer_pos > 3:
+            pointer_pos = 3
+        
+        pointer_x = 55
+        pointer_y = 257 + 70 * (pointer_pos - 1)        
+        draw_claim_menu(screen, logo, big_font.render("GACHA", True, (0, 0, 0)), big_font.render("TRADE", True, (0, 0, 0)), big_font.render("EXIT", True, (0, 0, 0)))
+    
+    elif page == "Gacha":
         pointer_on = True
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
+        
         draw_claim(screen, button_exit, font, coins, gacha, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, lever_rect, screen_bg, resized_coin)
 
         current_time = pygame.time.get_ticks()
@@ -873,7 +896,10 @@ while running[0]:
                 dispenser_frame = 0          
             elif dispenser_frame >= len(animation_list[action]):
                 dispenser_frame = 0
-
+    
+    elif page == "Trade":
+        pointer_on = False
+        draw_trade(screen, cards_owned, card_images, button_exit, big_font, binder_highlight, pointer_up)
     elif page == "Cut":
         pointer_on = False
         draw_cut(screen, button_exit, fontx3, cut_scene_animation, cut_scene_frame, vs_bg,)
