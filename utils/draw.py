@@ -57,7 +57,7 @@ def draw_battle_menu(screen, logo, button_m, button_s, button_e):
 def draw_singleplayer_menu(screen):
     screen.fill("grey")
 
-def draw_battle(screen:pygame.SurfaceType, page, player_img, enemy_img, font, battle_base, battle_blank, teacher_info:dict, opp_username, small_font:pygame.font.Font, other_cards:tuple):
+def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank, teacher_info:dict, opp_username, small_font:pygame.font.Font, other_cards:tuple):
     if page == "00":
         screen.blit(battle_base, (0,0))
     else:
@@ -89,9 +89,6 @@ def draw_battle(screen:pygame.SurfaceType, page, player_img, enemy_img, font, ba
         screen.blit(t12, ((747-(t12.get_width()/2)),430))
         screen.blit(t13, ((253-(t13.get_width()/2)),525))
         screen.blit(t14, ((747-(t14.get_width()/2)),525))
-    
-    screen.blit(player_img, (140,135))
-    screen.blit(enemy_img, (700,100))
     
     opp_name = small_font.render(opp_username, True, "White")
     opp_name_rect = opp_name.get_rect(topright=(screen.get_width()-20, 20))
@@ -150,12 +147,12 @@ def draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, a
     if card_visible and current_card:
         screen.blit(current_card, card_rect)
 
-def draw_cut(screen, button_exit, font, animation_list, frame, vs_bg):
+def draw_cut(screen, button_exit, font, animation_list, frame, vs_bg, player_name, opp_name):
     if frame <= 16:
         screen.fill("grey")
     else:
-        vs_bg.blit(font.render("TEACHER 1", True, "White"), (50, 300))
-        vs_bg.blit(font.render("TEACHER 2", True, "White"), (450, 150))
+        vs_bg.blit(font.render(player_name, True, "White"), (50, 300))
+        vs_bg.blit(font.render(opp_name, True, "White"), (450, 150))
         vs_bg.blit(font.render("VS", True, "White"), (375, 250))
         screen.blit(pygame.transform.scale(vs_bg, (1000, 600)), (0, 0))
     # screen.blit(button_exit, (785,555))
