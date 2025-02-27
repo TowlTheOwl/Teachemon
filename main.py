@@ -171,11 +171,11 @@ lever_rect = pygame.Rect(445, 288, 40, 170)
 card_images = {}
 card_back = pygame.transform.scale(pygame.image.load("Images/card_back.png"), (90, 123))
 for i in range(59):
-    if i < 17: 
+    if i < 18: 
         card = pygame.transform.scale(pygame.image.load("Images/card_" + str(i) + ".png"), (90, 123))
     #temporary placeholder for the rest of the card b/c too lazy to load in rn
     else:
-        card = pygame.image.load("Images/card_placeholder.png")
+        card = pygame.transform.scale(pygame.image.load("Images/card_placeholder.png"), (90, 123))
 
     card_images[i] = card
 
@@ -271,6 +271,8 @@ while running[0]:
                     pointer_pos = 5
                 elif pointer_pos < 7:
                     pointer_pos += 1
+            elif page == "Trade":
+                pointer_pos = (pointer_pos%2) + 1
             else:
                 pointer_pos += 1
 
@@ -291,6 +293,8 @@ while running[0]:
                     pointer_pos = 1
                 elif pointer_pos > 5:
                     pointer_pos -= 1
+            elif page == "Trade":
+                pointer_pos = (pointer_pos%2) + 1
             else:
                 if pointer_pos > 1:
                     pointer_pos -= 1
@@ -310,6 +314,7 @@ while running[0]:
                 elif pointer_pos == 2:
                     page = "Binder"
                     left_page = 1
+                    card_zoom = 1
                 elif pointer_pos == 3:
                     page = "Claim"
                     dispenser_frame = 0
@@ -340,7 +345,7 @@ while running[0]:
                 if pointer_pos == 1:
                     page = "Menu"
             elif page == "Trade":
-                if pointer_pos == 1:
+                if pointer_pos == 2:
                     page = "Menu"
             elif page == "Choose Card":
                 keep_pointer = True
@@ -420,6 +425,9 @@ while running[0]:
                 server_messages[2] = None
             elif page == "Claim":
                 if pointer_pos == 1:
+                    page = "Menu"
+            elif page == "Trade":
+                if pointer_pos == 2:
                     page = "Menu"
             elif page == "Settings":
                 if pointer_pos == 1:
@@ -506,7 +514,7 @@ while running[0]:
                     if pointer_hover<len(userdata[2])-1: pointer_hover+=1
 
 
-        if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim": 
+        if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha": 
             if lever_rect.collidepoint(event.pos) and not card_visible:
                 gacha = random.randint(1, 59)
                 
@@ -1035,7 +1043,7 @@ while running[0]:
             pointer_on = False
         if card_zoom > 1 and card_zoom <= 3:
             card_zoom += 0.2
-        draw_binder(screen, left_page, left_page + 1, resized_binder, fontx1, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data, fontx1)
+        draw_binder(screen, left_page, left_page + 1, resized_binder, fontx1, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data)
         
 
         
@@ -1100,8 +1108,14 @@ while running[0]:
                 dispenser_frame = 0
     
     elif page == "Trade":
-        pointer_on = False
+        pointer_x = 750
+        pointer_y = 550
+        if pointer_pos == 2:
+            pointer_on = True
+        else:
+            pointer_on = False
         draw_trade(screen, cards_owned, card_images, button_exit, big_font, binder_highlight, pointer_up)
+    
     elif page == "Cut":
         pointer_on = False
         draw_cut(screen, button_exit, fontx3, cut_scene_animation, cut_scene_frame, vs_bg, main_screen_bg, userdata[0], opponent_username)

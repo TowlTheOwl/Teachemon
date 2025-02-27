@@ -2,14 +2,14 @@ import pygame
 from utils import *
 
 # START SCREEN
-def draw_start(screen: pygame.Surface, logo, button_login, button_signup, login_bg):
-    screen.blit(login_bg, (0,0))
+def draw_start(screen: pygame.Surface, logo, button_login, button_signup):
+    screen.fill("grey")
     screen.blit(logo, (30,50))
     screen.blit(button_login, (100,262))
     screen.blit(button_signup, (100,332))
 
 # LOGIN SCREEN
-def draw_login(screen: pygame.Surface, events, arrow_pos, username_tup, password_tup, login_button, back_tup, font, login_bg):
+def draw_login(screen: pygame.Surface, events, arrow_pos, username_tup, password_tup, login_button, back_tup, font):
     """
     Parameters
     screen: displays screen
@@ -20,7 +20,7 @@ def draw_login(screen: pygame.Surface, events, arrow_pos, username_tup, password
     login_button:tuple of (text_login_bg or text_signup_bg, text_login or text_signup, text_login_rect or text_signup_rect)
     back_tup: tupble of (text_back, text_back_rect)
     """
-    screen.blit(login_bg, (0,0))
+    screen.fill("grey")
     screen.blit(username_tup[0], username_tup[1])
     screen.blit(password_tup[0], password_tup[1])
     pygame.draw.rect(screen, (66, 245, 152), login_button[0], border_radius=5)
@@ -39,6 +39,7 @@ def draw_loading(screen, search_glass, circle_x, circle_y, exit_button):
 
 # DRAW MAIN MENU
 def draw_menu(screen, logo, battle, binder, claim, settings, screen_bg):
+    #screen.fill("grey")
     screen.blit(screen_bg, (0,0))
     screen.blit(logo, (30,50))
     screen.blit(battle, (100,262))
@@ -53,33 +54,10 @@ def draw_battle_menu(screen, logo, button_m, button_s, button_e):
     screen.blit(button_s, (100, 332))
     screen.blit(button_e, (100, 402))
 
-def draw_claim_menu(screen, logo, gacha, trade, exit):
-    screen.fill("grey")
-    screen.blit(logo, (30, 50))
-    screen.blit(gacha, (100, 262))
-    screen.blit(trade, (100, 332))
-    screen.blit(exit, (100, 402))
-
-def draw_trade(screen, cards_owned, cards, exit, font, highlight, pointer):
-    screen.fill("grey")
-    screen.blit(font.render("YOUR TRADE:", True, "Black"), (50, 100))
-
-    if len(cards_owned) == 0: 
-        screen.blit(font.render("NO CARDS", True, "Black"), (50, 200))
-    count = 0
-    for i in range(len(cards_owned)):
-            screen.blit(cards.get(i), (40+count*190, 200))
-            count += 1
-    screen.blit(exit, (785,555))
-    screen.blit(pygame.transform.scale(highlight, (165, 225)), (40, 200))
-    screen.blit(pointer, (100, 430))
-
-        
-
 def draw_singleplayer_menu(screen):
     screen.fill("grey")
 
-def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank, teacher_info:dict, opp_username, small_font:pygame.font.Font, other_cards:tuple):
+def draw_battle(screen:pygame.SurfaceType, page, player_img, enemy_img, font, battle_base, battle_blank, teacher_info:dict, opp_username, small_font:pygame.font.Font, other_cards:tuple):
     if page == "00":
         screen.blit(battle_base, (0,0))
     else:
@@ -112,6 +90,9 @@ def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank
         screen.blit(t13, ((253-(t13.get_width()/2)),525))
         screen.blit(t14, ((747-(t14.get_width()/2)),525))
     
+    screen.blit(player_img, (140,135))
+    screen.blit(enemy_img, (700,100))
+    
     opp_name = small_font.render(opp_username, True, "White")
     opp_name_rect = opp_name.get_rect(topright=(screen.get_width()-20, 20))
     screen.blit(opp_name, opp_name_rect)
@@ -120,10 +101,9 @@ def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank
 #     if battle_page == "Main":
 #         screen.blit(battle_main, (0, 0))
 
-def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, data):
+def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, data, test_font):
     screen.fill("grey")
     screen.blit(binder, (0, 0))
-
     x = 150
     y = 100
 
@@ -152,7 +132,6 @@ def draw_binder(screen, left, right, binder, font, card_images, cards_owned, car
     else:
         screen.blit(binder_highlight, (570 + (highlight_num-9)%3*95, 100 + (highlight_num-9)//3*135))
 
-    # print(card_zoom)
     card_num = highlight_num + 18 * int(left/2)
     if card_zoom > 1 and card_num in cards_owned:
         width = 90 * card_zoom
@@ -168,33 +147,20 @@ def draw_binder(screen, left, right, binder, font, card_images, cards_owned, car
             move3 = data[card_num]["Move 3 Name"]+ "-" + data[card_num]["Move 2 Damage"]
             screen.blit(font.render(move3.upper(), True, "Black"), (395, 415))
 
-def draw_claim(screen, button_exit, font, coins, animation_list, frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin, 
-               alpha, card_started, card_anim, max_cardanim, fade_started, 
-               cardanim_list, cardanim_frame, display_started):
+
+    
+    
+
+def draw_claim(screen, button_exit, font, coins, gacha, animation_list, frame, action, card_visible, current_card, card_rect, lever_rect, screen_bg, resized_coin):
     screen.blit(screen_bg, (0,0))
     screen.blit(button_exit, (785,555))
     screen.blit(animation_list[action][frame], (250,50))
     screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
     screen.blit(resized_coin, (40, 5))
-    fade_surface = pygame.Surface((screen.get_width(), screen.get_height()), pygame.SRCALPHA)
-
-    #faded overlay
+    #screen.blit(font.render(str(gacha), True, (255, 255, 255)), (480, 250))
+    #pygame.draw.rect(screen, "grey", lever_rect)
     if card_visible and current_card:
-        fade_surface.fill((255, 255, 255, alpha)) 
-        screen.blit(fade_surface, (0, 0)) 
-    #card animation display
-    if display_started:
-        anim_x = screen.get_width() // 2 - cardanim_list[0].get_width() // 2
-        anim_y = screen.get_height() // 2 - cardanim_list[0].get_height() // 2
-        screen.blit(cardanim_list[cardanim_frame], (anim_x, anim_y))
-    #scaling card up
-    if card_started:
-        scale = 1 + (card_anim / max_cardanim) * 1
-        new_card = pygame.transform.smoothscale(current_card, (int(card_rect.width * scale), int(card_rect.height * scale)))
-        new_rect = new_card.get_rect(center=card_rect.center)
-        card_rect = new_rect
-        screen.blit(new_card, new_rect)
-       
+        screen.blit(current_card, card_rect)
 
 def draw_cut(screen, button_exit, font, animation_list, frame, vs_bg, main_bg, username, opponent_username):
     if frame <= 16:
@@ -207,6 +173,9 @@ def draw_cut(screen, button_exit, font, animation_list, frame, vs_bg, main_bg, u
         screen.blit(pygame.transform.scale(vs_bg, (1270, 720)), (0, -50))
     # screen.blit(button_exit, (785,555))
     screen.blit(animation_list[frame], (0, -150))
+
+# def draw_rotating_lever(screen, new_lever, rect):
+#     screen.blit(new_lever, rect)
 
 def draw_settings(screen, button_credits, button_exit):
     screen.fill("grey")
@@ -248,6 +217,7 @@ def draw_card_wheel(screen, cards, selected_cards, pointer, font:pygame.font.Fon
             #pygame.draw.rect(screen, (0, 0, 0), ((255+(i*95),y),card_size))
             #draw_text(screen, str(card), font_small, color, (282+(i*95), 390))
             screen.blit(card_images[card], (255+(i*95), y))
+
     # draw right cards
     for i in range(2):
         card = cards_to_draw[i+3]
@@ -258,6 +228,7 @@ def draw_card_wheel(screen, cards, selected_cards, pointer, font:pygame.font.Fon
             #pygame.draw.rect(screen, (0, 0, 0), ((595+(i*95),y),card_size))
             #draw_text(screen, str(card), font_small, color, (622+(i*95), 390))
             screen.blit(card_images[card], (595+(i*95), y))
+
 
 def draw_text(screen:pygame.Surface, text:str, font:pygame.font.Font, color:tuple, pos:tuple):
     render = font.render(text, True, color)
