@@ -48,18 +48,21 @@ pointer_down = pygame.transform.rotate(pointer, 270)
 search_glass = pygame.image.load("Images/Magnifying Glass.png")
 binder_highlight = pygame.image.load("Images/yellow_border.png")
 placeholder_card = pygame.image.load("Images/placeholder.png")
-main_screen_bg = pygame.image.load("Images/bg.png")
+main_screen_bg = pygame.image.load("Images/mainbg.png")
 coin = pygame.image.load("Images/coin.png")
+login = pygame.image.load("Images/loginbg.png")
 animation_bg = pygame.image.load("Images/animation_bg.png")
 animation_bg = pygame.transform.scale_by(animation_bg, 50)
 
 resized_coin = pygame.transform.scale(coin, (112,112))
+login_bg = pygame.transform.scale(login, (ScreenWidth, ScreenHeight))
 screen_bg = pygame.transform.scale(main_screen_bg, (ScreenWidth, ScreenHeight))
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
 dispenser = pygame.image.load("Images/draft dispense.png")
 resized_dispenser = pygame.transform.scale(dispenser, (600, 600))
 sprite_sheet = pygame.image.load("Images/dispense sheet.png").convert_alpha()
+cardanim_sheet = pygame.image.load("Images/cardanim.png").convert_alpha()
 lever = pygame.image.load("Images/test6.png")
 lever = pygame.transform.scale(lever, (65, 364))
 rotated_lever = pygame.transform.rotate(lever, -16)
@@ -105,6 +108,16 @@ highlight_x = 95
 highlight_y = 73
 highlight_num = 0
 
+#animaiton for card reveal
+alpha = 0
+fade_started = False
+fading_in = False
+fade_speed = 5
+WHITE = (225, 225, 225)
+card_started = False
+card_anim = 0
+max_cardanim = 30
+
 #sprite animation for card dispenser
 back = (0,0,0)
 
@@ -117,7 +130,7 @@ def get_image(sheet, frame, width, height, scale, color):
 
     return image
 
-#create animation list
+#animation list for card dispenser
 animation_list = []
 animation_steps = [1, 11]
 action = 0
@@ -125,6 +138,13 @@ last_update = pygame.time.get_ticks()
 anim_cooldown = 120
 dispenser_frame = 0
 step = 0
+
+display_started = False
+cardanim_list = []
+cardanim_frame = 0
+cardanim_cooldown = 75
+for i in range(11):
+    cardanim_list.append(get_image(cardanim_sheet, i, 500, 300, 2, back))
 
 for animation in animation_steps:
     temp_img_list = []
@@ -138,6 +158,9 @@ cut_scene_frame = 0
 cut_scene_cooldown = 75
 for i in range(33):
     cut_scene_animation.append(get_image(cut_scene_sheet, i, 1000, 600, 1.3, back))
+# variable to determine what to transition to after the cut scene
+cut_to = 1
+trade_success = False
 
 #variable for card zoom factor
 card_zoom = 1
@@ -151,11 +174,11 @@ lever_rect = pygame.Rect(445, 288, 40, 170)
 card_images = {}
 card_back = pygame.transform.scale(pygame.image.load("Images/card_back.png"), (90, 123))
 for i in range(59):
-    if i < 17: 
+    if i < 18: 
         card = pygame.transform.scale(pygame.image.load("Images/card_" + str(i) + ".png"), (90, 123))
     #temporary placeholder for the rest of the card b/c too lazy to load in rn
     else:
-        card = pygame.image.load("Images/card_placeholder.png")
+        card = pygame.transform.scale(pygame.image.load("Images/card_placeholder.png"), (90, 123))
 
     card_images[i] = card
 
@@ -212,6 +235,10 @@ cards_owned = userdata[2]
 must_swap = False
 opponent_username = None
 
+# for trading - players can only trade with other players who are also on the trade page b/c live trading
+# similar to finding an opponent to battle but instead finding all the possible trade players
+available_players = []
+
 threading.Thread(target=handle_server_connection, args=(connection,running,server_messages,userdata)).start()
 
 #Run Program
@@ -251,6 +278,22 @@ while running[0]:
                     pointer_pos = 5
                 elif pointer_pos < 7:
                     pointer_pos += 1
+            elif page == "Trade":
+                if pointer_pos < 3:
+                    pointer_pos += 1
+            elif page == "Choose Trade Card":
+                if pointer_pos < 2:
+                    pointer_on = True
+                    pointer_pos += 1
+            # replace this next sprint (?), rn cut scene to view trade is triggered by pressing the DOWN button 
+            # but once server connection is implemented, cut scene will be triggered once the other players selects their card
+            elif page == "Trade Loading":
+                page = "Cut"     
+                cut_to = 3 
+            
+            elif page == "View Trade":
+                if pointer_pos < 2:
+                    pointer_pos += 1
             else:
                 pointer_pos += 1
 
@@ -271,6 +314,23 @@ while running[0]:
                     pointer_pos = 1
                 elif pointer_pos > 5:
                     pointer_pos -= 1
+            elif page == "Trade":
+                if pointer_pos > 1:
+                    pointer_pos -= 1
+            elif page == "View Trade":
+                if pointer_pos > 1:
+                    pointer_pos -= 1
+                    
+            # replace this next sprint (?), rn cut scene is triggered by pressing the UP button 
+            # but once server connection is implemented, cut scene will be triggered once the other players selects this player (must match)
+            elif page == "Trade Loading":
+                page = "Cut"     
+                cut_to = 2 
+            elif page == "Choose Trade Card":
+                if pointer_pos > 1:
+                    pointer_on = False
+                    pointer_pos -= 1                    
+
             else:
                 if pointer_pos > 1:
                     pointer_pos -= 1
@@ -290,6 +350,7 @@ while running[0]:
                 elif pointer_pos == 2:
                     page = "Binder"
                     left_page = 1
+                    card_zoom = 1
                 elif pointer_pos == 3:
                     page = "Claim"
                     dispenser_frame = 0
@@ -320,8 +381,22 @@ while running[0]:
                 if pointer_pos == 1:
                     page = "Menu"
             elif page == "Trade":
-                if pointer_pos == 1:
+                if pointer_pos == 4:
                     page = "Menu"
+                else: 
+                    page = "Trade Loading"
+                    keep_pointer = True
+            elif page == "Choose Trade Card":
+                if pointer_pos == 2:
+                    page = "Trade Loading"
+            elif page == "View Trade":
+                page = "Trade Result"
+                if pointer_pos == 1:
+                    trade_success = True
+                elif pointer_pos == 2:
+                    trade_success = False
+            elif page == "Trade Result":
+                page = "Menu"
             elif page == "Choose Card":
                 keep_pointer = True
                 if pointer_pos <= 4:
@@ -432,8 +507,10 @@ while running[0]:
                     page = "Start"
                     username_box.reset()
                     password_box.reset()
+            
             if not keep_pointer:
                 pointer_pos = 1
+            
         
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
@@ -461,7 +538,10 @@ while running[0]:
                     pointer_pos -= 1
                 if pointer_pos == 5:
                     if pointer_hover>0: pointer_hover-=1
-    
+
+            elif page == "Choose Trade Card":
+                if pointer_hover>0: pointer_hover-=1
+
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
             if page == "SBattle" or page == "Battle":
@@ -484,19 +564,31 @@ while running[0]:
                     pointer_pos += 1
                 if pointer_pos == 5:
                     if pointer_hover<len(userdata[2])-1: pointer_hover+=1
+                    
+            elif page == "Trade":
+                if pointer_pos < 4:
+                    pointer_pos = 4
 
+            elif page == "Choose Trade Card":
+                if pointer_hover<len(userdata[2])-1: pointer_hover+=1
 
-        if event.type == pygame.MOUSEBUTTONDOWN and page == "Claim": 
+        if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha": 
             if lever_rect.collidepoint(event.pos) and not card_visible:
                 gacha = random.randint(1, 59)
+                
                 if gacha not in cards_owned:
                     cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
                     connection.send(f"a{gacha}".encode())
 
                 current_card = card_images[gacha]
-                card_rect = current_card.get_rect(center=(ScreenWidth // 2 - 250, ScreenHeight // 2))
+                card_rect = current_card.get_rect(center=(ScreenWidth // 2, ScreenHeight // 2))
                 card_visible = True
-
+                #fade effect
+                alpha = 0
+                fading_in = True
+                #card display animation
+                dispalay_started = False
+                cardanim_frame = 0
                 #update animation
                 if action == 1:
                     action -= 1
@@ -504,9 +596,12 @@ while running[0]:
                 dispenser_frame = 0
             elif card_visible and card_rect and card_rect.collidepoint(event.pos):
                 #hide card if clicked
+                display_started = False
                 card_visible = False
                 current_card = None
                 card_rect = None
+                card_started = False
+                card_anim = 0
   
 
 
@@ -521,7 +616,7 @@ while running[0]:
         
         pointer_x = 55
         pointer_y = 257 + 70 * (pointer_pos-1)
-        draw_start(screen, logo, button_login, button_signup)
+        draw_start(screen, logo, button_login, button_signup, login_bg)
         
     elif page == "Login":
         pointer_on = True
@@ -533,7 +628,7 @@ while running[0]:
         else:
             pointer_y = 400-50-22 + (pointer_pos-2)*100
         draw_login(screen, events, pointer_pos, (text_username, text_username_rect, username_box), 
-                   (text_password, text_password_rect, password_box), (text_login_bg, text_login, text_login_rect), (text_back, text_back_rect), base_font)
+                   (text_password, text_password_rect, password_box), (text_login_bg, text_login, text_login_rect), (text_back, text_back_rect), base_font, login_bg)
 
         
         # check login response
@@ -561,7 +656,7 @@ while running[0]:
         else:
             pointer_y = 400-50-22 + (pointer_pos-2)*100
         draw_login(screen, events, pointer_pos, (text_username, text_username_rect, username_box), 
-                   (text_password, text_password_rect, password_box), (text_signup_bg, text_signup, text_signup_rect), (text_back, text_back_rect), base_font)
+                   (text_password, text_password_rect, password_box), (text_signup_bg, text_signup, text_signup_rect), (text_back, text_back_rect), base_font, login_bg)
         
         # check signup response
         if server_messages[1] is not None:
@@ -697,6 +792,7 @@ while running[0]:
                     actions = [None, None]
                     waiting = False
                     page = "Cut"
+                    cut_to = 1
                     print("CUT SCENE\n")
                 else:
                     print(f"Wart {server_messages[3]}")
@@ -1006,7 +1102,7 @@ while running[0]:
             pointer_on = False
         if card_zoom > 1 and card_zoom <= 3:
             card_zoom += 0.2
-        draw_binder(screen, left_page, left_page + 1, resized_binder, fontx1, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data, fontx1)
+        draw_binder(screen, left_page, left_page + 1, resized_binder, fontx1, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data)
         
 
         
@@ -1034,33 +1130,103 @@ while running[0]:
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
-        
-        draw_claim(screen, button_exit, font, coins, gacha, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, lever_rect, screen_bg, resized_coin)
-
+        draw_claim(screen, button_exit, font, coins, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin,
+                   alpha, card_started, card_anim, max_cardanim, fade_started,
+                   cardanim_list, cardanim_frame, display_started)
         current_time = pygame.time.get_ticks()
+
+        if card_visible:
+            if fading_in:
+                alpha += fade_speed
+                if alpha >= 170:
+                    alpha = 170              
+                    fading_in = False 
+                    card_started = True
+                    card_anim = 0
+        if display_started:
+            if current_time - last_update >= cardanim_cooldown:
+                cardanim_frame += 1
+                last_update = current_time
+                if cardanim_frame >= len(cardanim_list):  #reset animation if it reaches the last frame
+                    cardanim_frame = 0
+        
+        if card_started:
+            card_anim += 1
+            if card_anim >= max_cardanim:
+                card_anim = max_cardanim
+                display_started = True
+
         if current_time - last_update >= anim_cooldown:
             dispenser_frame += 1
             last_update = current_time
             if dispenser_frame == 11:
                 action = (action + 1) % len(animation_list)
+                #fade_started = True
                 dispenser_frame = 0          
             elif dispenser_frame >= len(animation_list[action]):
                 dispenser_frame = 0
     
     elif page == "Trade":
+        pointer_on = True
+        if pointer_pos == 4:
+            pointer_x = 750
+            pointer_y = 550
+        else: 
+            pointer_x = 150
+            pointer_y = 200 + 100 * (pointer_pos - 1)
+        # send some server message that this player is trying to trade and receive from server list of available players trying to trade
+        # placeholder
+        available_players = ["PLAYER 1", "PLAYER 2", "PLAYER 3", "PLAYER 4", "PLAYER 5"]
+        draw_trade(screen, cards_owned, card_images, button_exit, big_font, binder_highlight, available_players)
+    
+    elif page == "Trade Loading":
         pointer_on = False
-        draw_trade(screen, cards_owned, card_images, button_exit, big_font, binder_highlight, pointer_up)
+        # "up to continue" is temporary placeholder until server connections are implemented
+        draw_trade_loading(screen, small_font, available_players[pointer_pos - 1])
+    
+    elif page == "Choose Trade Card":
+        pointer_x = 350
+        pointer_y = 530
+        draw_trade_wheel(screen, userdata[2], pointer_hover, base_font, big_font, text_go, text_go_bg, text_go_rect, card_images)
+        screen.blit(pointer_down, (485, 230))
+        screen.blit(pointer_up, (485, 400))
+    
+    elif page == "View Trade":
+        # last argument card_images[0] (recieve card) is placeholder for now
+        # replace once server connection is implemented
+        pointer_on = True
+        pointer_x = 350
+        pointer_y = 165 + pointer_pos * 130
+        draw_view_trade(screen, big_font, base_font, card_images[userdata[2][pointer_hover]], card_images[0])
+
+    elif page == "Trade Result": 
+        pointer_on = True
+        pointer_x = 750
+        pointer_y = 550
+        # if trade_success:
+            # add the traded card to the other player idk how to do that lololol
+            # remove the traded card from this player userdata
+        draw_trade_result(screen, big_font, trade_success, button_exit)
+
     elif page == "Cut":
         pointer_on = False
-        draw_cut(screen, button_exit, fontx3, cut_scene_animation, cut_scene_frame, vs_bg, main_screen_bg, userdata[0], opponent_username)
-        
+        draw_cut(screen, button_exit, fontx3, big_font, cut_scene_animation, cut_scene_frame, vs_bg, main_screen_bg, userdata[0], opponent_username, cut_to)
+
         current_time = pygame.time.get_ticks()
         if current_time - last_update >= cut_scene_cooldown:
             if cut_scene_frame == 32:
                 pygame.time.wait(1500)
                 cut_scene_frame = 0
-                page = "Battle"
-                connection.send("xCONNECTED".encode())
+                if cut_to == 1:
+                    page = "Battle"
+                    connection.send("xCONNECTED".encode())
+                if cut_to == 2:
+                    page = "Choose Trade Card"
+                    # send server connection 
+                if cut_to == 3:
+                    page = "View Trade"
+                    # send server connection 
+
             else:
                 cut_scene_frame += 1
                 last_update = current_time
