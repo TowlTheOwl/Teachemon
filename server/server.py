@@ -168,7 +168,17 @@ class Server:
 
                     elif msg[0] == "a":
                         self.add_card(user, msg[1:])
-                            
+                    
+                    elif msg[0] == "k":
+                        try:
+                            new_coins = int(msg[1:])
+                            if user is not None:
+                                self.update_coins(user, new_coins)
+                            else:
+                                print("Tried to update coins before login.")
+                        except ValueError:
+                            print("Invalid coin value:", msg)
+                                            
             
             except Exception as e:
                 print(e)
@@ -216,7 +226,7 @@ class Server:
         if (self.find_login(username) == 0):
             return False
         with open("data/data.txt", "a") as file:
-            file.write(f"\n{username},{password}," + "0"*59)
+            file.write(f"\n{username},{password}," + "0"*59 + ",50")
         return True
 
     def replace_line(self, file_name, line_num, text):
@@ -252,6 +262,36 @@ class Server:
                         card_list.append(int(card_num))
                     self.replace_line("data/data.txt", index, f"{user},{pswd},{self.list_to_card(card_list)}\n")
                     print(f"Replaced Line {index} with {user},{pswd},{self.list_to_card(card_list)}")
+                    return
+    
+    def set_coins(self, username: str, new_amount: int):
+        with open("data/data.txt", "r+") as file:
+            data = file.readlines()
+            for index in range(len(data)):
+                user, pswd, card, _ = data[index].strip().split(",")
+                if user == username:
+                    self.replace_line("data/data.txt", index, f"{user},{pswd},{card},{new_amount}\n")
+                    print(f"[Server] Set {username}'s coins to {new_amount}")
+                    return
+    
+    def get_coins(self, username: str) -> int:
+        with open("data/data.txt", "r") as file:
+            data = file.readlines()
+            for info in data:
+                user, _, _, coins = info.strip().split(",")
+                if user == username:
+                    return int(coins)
+        return 0 
+    
+    def update_coins(self, username: str, coins: int):
+        with open("data/data.txt", "r") as file:
+            data = file.readlines()
+            for index in range(len(data)):
+                line = data[index].strip()
+                user, pswd, card, _= line.split(",")
+                if user == username:
+                    self.replace_line("data/data.txt", index, f"{user},{pswd},{card},{coins}\n")
+                    print(f"Updated coins for {user} to {coins}")
                     return
 
 class BattleHandler:
