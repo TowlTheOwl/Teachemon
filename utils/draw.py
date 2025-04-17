@@ -220,14 +220,20 @@ def draw_binder(screen, left, right, binder, font, card_images, cards_owned, car
 
 def draw_claim(screen, button_exit, font, coins, animation_list, frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin, 
                alpha, card_started, card_anim, max_cardanim, fade_started, 
-               cardanim_list, cardanim_frame, display_started):
+               cardanim_list, cardanim_frame, display_started, no_coins, no_coins_duration, no_coins_timer, owned, big_font:pygame.font.Font):
+    owned_msg = "CARD ALREADY OWNED"
     screen.blit(screen_bg, (0,0))
     screen.blit(button_exit, (785,555))
     screen.blit(animation_list[action][frame], (250,50))
-    screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
-    screen.blit(resized_coin, (40, 5))
+    screen.blit(big_font.render(str(coins), True, (0, 0, 0)), (30, 30))
+    screen.blit(resized_coin, (90, 5))
     fade_surface = pygame.Surface((screen.get_width(), screen.get_height()), pygame.SRCALPHA)
 
+    #not enough coins warning
+    if no_coins and pygame.time.get_ticks() - no_coins_timer < no_coins_duration:
+        warning_surf = big_font.render(no_coins, True, (255,0,0))
+        warning_rect = warning_surf.get_rect(center=(screen.get_width() // 2, screen.get_height() - 80))
+        screen.blit(warning_surf, warning_rect)
     #faded overlay
     if card_visible and current_card:
         fade_surface.fill((255, 255, 255, alpha)) 
@@ -244,6 +250,16 @@ def draw_claim(screen, button_exit, font, coins, animation_list, frame, action, 
         new_rect = new_card.get_rect(center=card_rect.center)
         card_rect = new_rect
         screen.blit(new_card, new_rect)
+        #if card is already owned
+        if not owned:
+            owned_surf = big_font.render(owned_msg, True, (255,0,0))
+            owned_rect = owned_surf.get_rect(center=(screen.get_width() // 2, screen.get_height() - 80))
+            screen.blit(owned_surf, owned_rect)      
+        elif owned:
+            not_owned = "NEW"
+            not_owned_surf = big_font.render(not_owned, True, (255,0,0))
+            not_owned_rect = not_owned_surf.get_rect(center=(screen.get_width() // 2, screen.get_height() - 80))
+            screen.blit(not_owned_surf, not_owned_rect) 
        
 
 def draw_cut(screen, button_exit, font, big_font, animation_list, frame, vs_bg, main_bg, username, opponent_username, cut_to):
@@ -284,7 +300,12 @@ def draw_choose_your_team(screen:pygame.Surface, button_exit, text_cyt, cyt_rect
 def draw_card_wheel(screen, cards, selected_cards, pointer, font:pygame.font.Font, font_small, card_images):
     len_cards = len(cards)
     cards_to_draw = [cards[pointer+i] if i>=-pointer and i+pointer<len_cards else None for i in (-2, -1, 0, 1, 2)]
+    #pygame.draw.rect(screen, (0, 0, 0), ((445, 315),(110, 150)))    # draw center card
     card = cards_to_draw[2]
+    #color = (255, 255, 255)
+    #if card in selected_cards:
+        #color = (255, 100, 100)
+    #draw_text(screen, str(card), font, color, (500, 390))
     screen.blit(card_images[card], (460, 315))
 
     y = 352
@@ -298,6 +319,8 @@ def draw_card_wheel(screen, cards, selected_cards, pointer, font:pygame.font.Fon
             color = (255, 255, 255)
             if card in selected_cards:
                 color = (255, 100, 100)
+            #pygame.draw.rect(screen, (0, 0, 0), ((255+(i*95),y),card_size))
+            #draw_text(screen, str(card), font_small, color, (282+(i*95), 390))
             screen.blit(card_images[card], (255+(i*95), y))
     # draw right cards
     for i in range(2):
@@ -306,6 +329,8 @@ def draw_card_wheel(screen, cards, selected_cards, pointer, font:pygame.font.Fon
             color = (255, 255, 255)
             if card in selected_cards:
                 color = (255, 100, 100)
+            #pygame.draw.rect(screen, (0, 0, 0), ((595+(i*95),y),card_size))
+            #draw_text(screen, str(card), font_small, color, (622+(i*95), 390))
             screen.blit(card_images[card], (595+(i*95), y))
 
 def draw_text(screen:pygame.Surface, text:str, font:pygame.font.Font, color:tuple, pos:tuple):

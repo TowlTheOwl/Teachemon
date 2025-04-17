@@ -95,7 +95,6 @@ pointer_on = True
 pointer_x = 55
 pointer_y = 257
 left_page = 1
-coins = 0
 circle_x = 0
 circle_y = 0
 circle_angle = 0
@@ -117,6 +116,11 @@ WHITE = (225, 225, 225)
 card_started = False
 card_anim = 0
 max_cardanim = 30
+#not enough coins display
+no_coins = ""
+no_coins_timer = 0
+no_coins_duration = 2000
+owned = False
 
 #sprite animation for card dispenser
 back = (0,0,0)
@@ -229,8 +233,10 @@ running = [True]
 
 server_messages = [None, None, None, None, None, None, None] # check utils
 
+coins = 50
 selected_cards = [None, None, None, None]
-userdata = [username, password, [], selected_cards] # username, password, owned cards, selected cards
+userdata = [username, password, [], selected_cards, coins] # username, password, owned cards, selected cards
+coins = userdata[4]
 cards_owned = userdata[2]
 must_swap = False
 opponent_username = None
@@ -476,6 +482,9 @@ while running[0]:
             elif page == "Claim":
                 if pointer_pos == 1:
                     page = "Menu"
+            elif page == "Trade":
+                if pointer_pos == 2:
+                    page = "Menu"
             elif page == "Settings":
                 if pointer_pos == 1:
                     print("credits")
@@ -572,28 +581,37 @@ while running[0]:
             elif page == "Choose Trade Card":
                 if pointer_hover<len(userdata[2])-1: pointer_hover+=1
 
-        if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha": 
+        if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha":
             if lever_rect.collidepoint(event.pos) and not card_visible:
-                gacha = random.randint(1, 59)
+                if coins >= 10:
+                    coins -= 10
+                    userdata[4] = coins
+                    connection.send(f"k{userdata[4]}".encode())
+                    
+                    gacha = random.randint(1, 59)
                 
-                if gacha not in cards_owned:
-                    cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
-                    connection.send(f"a{gacha}".encode())
+                    if gacha not in cards_owned:
+                        cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
+                        connection.send(f"a{gacha}".encode())
+                        owned = True
 
-                current_card = card_images[gacha]
-                card_rect = current_card.get_rect(center=(ScreenWidth // 2, ScreenHeight // 2))
-                card_visible = True
-                #fade effect
-                alpha = 0
-                fading_in = True
-                #card display animation
-                dispalay_started = False
-                cardanim_frame = 0
-                #update animation
-                if action == 1:
-                    action -= 1
-                action += 1
-                dispenser_frame = 0
+                    current_card = card_images[gacha]
+                    card_rect = current_card.get_rect(center=(ScreenWidth // 2, ScreenHeight // 2))
+                    card_visible = True
+                    #fade effect
+                    alpha = 0
+                    fading_in = True
+                    #card display animation
+                    dispalay_started = False
+                    cardanim_frame = 0
+                    #update animation
+                    if action == 1:
+                        action -= 1
+                    action += 1
+                    dispenser_frame = 0
+                else:
+                    no_coins = "NOT ENOUGH COINS"
+                    no_coins_timer = pygame.time.get_ticks()
             elif card_visible and card_rect and card_rect.collidepoint(event.pos):
                 #hide card if clicked
                 display_started = False
@@ -1132,7 +1150,7 @@ while running[0]:
         pointer_y = 550
         draw_claim(screen, button_exit, font, coins, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin,
                    alpha, card_started, card_anim, max_cardanim, fade_started,
-                   cardanim_list, cardanim_frame, display_started)
+                   cardanim_list, cardanim_frame, display_started, no_coins, no_coins_duration, no_coins_timer, owned, big_font)
         current_time = pygame.time.get_ticks()
 
         if card_visible:
