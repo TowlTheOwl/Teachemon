@@ -26,6 +26,7 @@ center_y = 300
 pygame.display.set_caption("Teachemon")
 
 #Import Images
+hong = pygame.image.load("Images/hong.png")
 logo = pygame.image.load("Images/logo x4.png")
 button_login = pygame.image.load("Images/login x5.png")
 button_signup = pygame.image.load("Images/signup x5.png")
@@ -494,7 +495,7 @@ while running[0]:
                     page = "Menu"
             elif page == "Settings":
                 if pointer_pos == 1:
-                    print("credits")
+                    draw_credits(screen, button_exit, fontx1, hong)
                 elif pointer_pos == 2:
                     page = "Menu"
             elif page == "Binder":
@@ -1359,7 +1360,6 @@ while running[0]:
         pointer_on = True
         if pointer_pos > 2:
             pointer_pos = 2
-        
         pointer_x = 270
         pointer_y = 107 + 70 * (pointer_pos-1)
         draw_settings(screen, button_credits, button_exit)
