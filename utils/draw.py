@@ -213,6 +213,69 @@ def draw_settings(screen, button_credits, button_exit):
     screen.blit(button_credits, (315,112))
     screen.blit(button_exit, (398,182))
 
+def draw_credits(screen, button_exit, font, image):
+    pygame.init()
+    screen.fill("grey")
+
+    credits = [
+        "",
+        "IN HONOR OF MR HONG...",
+        "",
+        "HOW DID THE DOG GET STRAIGHT AS",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "IT WAS THE TEACHERS PET!",
+        "",
+        "",
+        "",
+        "OUR TEAM",
+        "",
+        "",
+        "OUR CEO HENRY NOT HARRY YANG",
+        "DANTASTIC DANIEL CHOI",
+        "JUBILANT JESSICA NI",
+        "CHEERFUL CASSIDY TRAN",
+        "ESTHER CARL SAYS HI"
+
+    ]
+
+    credit_surfaces = []
+    for line in credits:
+        credit_surfaces.append(font.render(line, True, "white"))
+    content_height = image.get_height() + len(credit_surfaces) * 50
+    width, height = 1000, 600
+    y = height
+    x = width
+
+
+    speed = 1
+    clock = pygame.time.Clock()
+    running = True
+
+    while running:
+        screen.fill("black")
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running=False
+
+        image_x = (width - image.get_width()) // 2
+        screen.blit(image, (image_x, y))
+
+        for i, surface in enumerate(credit_surfaces):
+            x = (width - surface.get_width()) // 2
+            screen.blit(surface, (x, y + image.get_height() + i * 50))
+        
+        y -= speed
+        if y + content_height < 0:
+            running = False
+
+        pygame.display.flip()
+        clock.tick(60)
+
 def draw_choose_your_team(screen:pygame.Surface, button_exit, text_cyt, cyt_rect, button_go_text, button_go_bg, button_go_rect, selected_cards, font, card_images):
     screen.fill("grey")
     pygame.draw.rect(screen, (150, 150, 150), button_go_bg, border_radius=5)
