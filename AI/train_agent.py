@@ -61,25 +61,22 @@ def train_agent():
     base_env = BattleGymEnv()
     env = MaskedEnv(base_env)
     env = ActionMasker(env, mask_fn)
-
-    model_name = input("Type in Model Name (check directory) (n for new): ")
-    if model_name == "n":
-        print("Creating new model")
-        model = MaskablePPO(
-            MaskableActorCriticPolicy,
-            env,
-            verbose=1,
-            tensorboard_log=log_dir
-        )
-        print("Succesfully created new model")
-    else:
-        model_path = f"{save_dir}/{model_name}.zip"
-        if os.path.exists(model_path):
-            print("Save found: Attempting to Load")
-            model = MaskablePPO.load("./saves/ppo_teachemon.zip")
+    
+    if len(os.listdir(save_dir)) != 0:
+        latest = os.path.join(save_dir, max(os.listdir(save_dir), key=lambda x:int(x[:-4])))
+    get_last_agent = input(f"Resume training with last agent? (last agent: {latest}) (y/n)")
+    if get_last_agent == "y":
+        try:
+            print(f"Attempting to Load {latest}")
+            model = MaskablePPO.load(latest, env=env)
             print("Succesfully loaded model")
-        else:
-            print("No model found: Creating new model")
+        except Exception as e:
+            print(e)
+            quit()
+    else:
+        model_name = input("Type in Model Name (check directory) (n for new): ")
+        if model_name == "n":
+            print("Creating new model")
             model = MaskablePPO(
                 MaskableActorCriticPolicy,
                 env,
@@ -87,6 +84,21 @@ def train_agent():
                 tensorboard_log=log_dir
             )
             print("Succesfully created new model")
+        else:
+            model_path = f"{save_dir}/{model_name}.zip"
+            if os.path.exists(model_path):
+                print("Save found: Attempting to Load")
+                model = MaskablePPO.load("./saves/ppo_teachemon.zip")
+                print("Succesfully loaded model")
+            else:
+                print("No model found: Creating new model")
+                model = MaskablePPO(
+                    MaskableActorCriticPolicy,
+                    env,
+                    verbose=1,
+                    tensorboard_log=log_dir
+                )
+                print("Succesfully created new model")
 
     TIMESTEPS = 100_000
     for i in range(1,2):
@@ -95,7 +107,7 @@ def train_agent():
             reset_num_timesteps=False,
             tb_log_name="PPO"
         )
-        model.save(f"{save_dir}/{TIMESTEPS*i}")
+        model.save(f"{save_dir}/{model.num_timesteps}")
 
     return model, env
 
