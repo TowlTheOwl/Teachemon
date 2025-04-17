@@ -531,8 +531,8 @@ while running[0]:
                     if gacha not in cards_owned:
                         cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
                         connection.send(f"a{gacha}".encode())
-                    else:
                         owned = True
+
                     current_card = card_images[gacha]
                     card_rect = current_card.get_rect(center=(ScreenWidth // 2, ScreenHeight // 2))
                     card_visible = True
