@@ -234,10 +234,8 @@ running = [True]
 
 server_messages = [None, None, None, None, None, None, None] # check utils
 
-coins = 50
 selected_cards = [None, None, None, None]
-userdata = [username, password, [], selected_cards, coins] # username, password, owned cards, selected cards
-coins = userdata[4]
+userdata = [username, password, [], selected_cards, 50] # username, password, owned cards, selected cards
 cards_owned = userdata[2]
 must_swap = False
 opponent_username = None
@@ -591,9 +589,8 @@ while running[0]:
 
         if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha":
             if lever_rect.collidepoint(event.pos) and not card_visible:
-                if coins >= 10:
-                    coins -= 10
-                    userdata[4] = coins
+                if userdata[4] >= 10:
+                    userdata[4] -= 10
                     connection.send(f"k{userdata[4]}".encode())
                     
                     gacha = random.randint(1, 59)
@@ -663,6 +660,7 @@ while running[0]:
             if response == "1":
                 page = "Menu"
                 connection.send("get cards".encode())
+                connection.send("get coins".encode())
             elif response == "0":
                 display_box(screen, "INCORRECT PASSWORD", base_font, 3)
             elif response == "2":
@@ -936,12 +934,12 @@ while running[0]:
                 game_announcement_rect = game_announcement.get_rect(center=(center_x, 50))
                 screen.blit(game_announcement, game_announcement_rect)
                 selected_move_display = small_font.render(f"SELECTED {selected_move}".upper(), True, (0, 0, 0))
-                screen.blit(selected_move_display, selected_move_display.get_rect(center=(center_x, center_y+50)))
+                screen.blit(selected_move_display, selected_move_display.get_rect(center=(center_x, center_y+70)))
                 energy_display = small_font.render(f"ENERGY {energy[curr_cards[player_num]]}", True, (0, 0, 0))
-                screen.blit(energy_display, energy_display.get_rect(center=(center_x, center_y-50)))
-                self_effects_display = small_font.render(f"EFFECTS1 {self_effect[0]} {self_effect[1]}", True, (0, 0, 0))
-                opp_effects_display = small_font.render(f"EFFECTS2 {opp_effect[0]} {opp_effect[1]}", True, (0, 0, 0))
-                screen.blit(self_effects_display, self_effects_display.get_rect(center=(center_x-300, center_y+50)))
+                screen.blit(energy_display, energy_display.get_rect(center=(center_x, center_y-200)))
+                self_effects_display = small_font.render(f"EFFECTS {self_effect[0]} {self_effect[1]}", True, (0, 0, 0))
+                opp_effects_display = small_font.render(f"EFFECTS {opp_effect[0]} {opp_effect[1]}", True, (0, 0, 0))
+                screen.blit(self_effects_display, self_effects_display.get_rect(center=(center_x-250, center_y+50)))
                 screen.blit(opp_effects_display, opp_effects_display.get_rect(center=(center_x+300, center_y+50)))
 
                 if timer_on:
@@ -980,14 +978,14 @@ while running[0]:
                                 data = teachemon_data[card_num-1]
                                 move_info = (source_name.upper(), data["Name"].upper(), data[f"Move {int(action_name[1]) + 1} Name"].upper(), data[f"Move {int(action_name[1]) + 1} Damage"].upper())
                                 scene = 0
-                                print_delay = 3
+                                print_delay = 1
                             elif action_name[0] == "i":
                                 card_num = selected_cards[curr_cards[player_num]] if source == player_num else opponent_cards[curr_cards[source]]
                                 data = teachemon_data[card_num-1]
                                 potion_names = ("Attack Potion", "Defense Potion", "Energy Potion")
-                                item_info = (source_name.upper(), data["Name"].upper(), potion_names[int(action_name[1])])
+                                item_info = (source_name.upper(), data["Name"].upper(), potion_names[int(action_name[1])].upper())
                                 scene = 0
-                                print_delay = 3
+                                print_delay = 1
                             if source == player_num:
                                 is_self = True
                             print()
@@ -1254,7 +1252,7 @@ while running[0]:
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
-        draw_claim(screen, button_exit, font, coins, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin,
+        draw_claim(screen, button_exit, font, userdata[4], animation_list, dispenser_frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin,
                    alpha, card_started, card_anim, max_cardanim, fade_started,
                    cardanim_list, cardanim_frame, display_started, no_coins, no_coins_duration, no_coins_timer, owned, big_font)
         current_time = pygame.time.get_ticks()

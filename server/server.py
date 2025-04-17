@@ -164,6 +164,17 @@ class Server:
                             else:
                                 print("USERNAME NOT FOUND WHEN SEARCHING FOR CARDS")
                     
+                    elif msg == "get coins":
+                        if user is None:
+                            print("NOT LOGGED IN BUT GET COINS CALLED????")
+                        else:
+                            coins = self.find_coins(user)
+                            if coins != "":
+                                c.send(f"sk{coins}".encode())
+                                print(f"sk{coins}")
+                            else:
+                                print("USERNAME NOT FOUND WHEN SEARCHING FOR COINS")
+                    
                     elif msg[0] == "x":
                         # it is a match message, relay onto server
                         player.queue.append(msg[1:])
@@ -231,6 +242,9 @@ class Server:
 
     def replace_line(self, file_name, line_num, text):
         lines = open(file_name, 'r').readlines()
+        print(f"Replacing line {line_num}")
+        print(f"\tPreviously {lines[line_num]}")
+        print(f"\tto {text}")
         lines[line_num] = text
         out = open(file_name, 'w')
         out.writelines(lines)
@@ -254,6 +268,20 @@ class Server:
                     return card
         return ""
 
+    def find_coins(self, username):
+        with open("data/data.txt", "r+") as file:
+            data = file.readlines()
+            for info in data:
+                parts = info.strip().split(",")
+                if len(parts) < 3:
+                    continue  # skip malformed or metadata lines
+                user, _, _ = parts[:3]
+                if user == username:
+                    if len(parts) == 3:
+                        return "50"
+                    return parts[3]
+        return ""
+
     def add_card(self, username:str, card_num:str):
         with open("data/data.txt", "r+") as file:
             data = file.readlines()
@@ -264,21 +292,18 @@ class Server:
                     print(f"Skipping malformed line: {data[index]}")
                     continue
 
-                user, pswd = parts[0], parts[1]
+                user, pswd, card = parts[0], parts[1], parts[2]
             
                 if len(parts) == 3:
-                    card = parts[2]
                     coins = "0"  #default value if coins are not set yet
                 else:
-                    card = "".join(parts[2:-1])
                     coins = parts[-1]
 
                 if user == username:
                     card_list = self.card_to_list(card)
                     if card_num not in card_list:
                         card_list.append(int(card_num))
-                    self.replace_line("data/data.txt", index, f"{user},{pswd},{self.list_to_card(card_list)}\n")
-                    print(f"Replaced Line {index} with {user},{pswd},{self.list_to_card(card_list)}")
+                    self.replace_line("data/data.txt", index, f"{user},{pswd},{self.list_to_card(card_list)},{coins}\n")
                     return
     
     def set_coins(self, username: str, new_amount: int):
@@ -295,6 +320,7 @@ class Server:
                 coins = parts[3] if len(parts) >= 4 else "0"
 
                 if user == username:
+                    coins = new_amount
                     self.replace_line("data/data.txt", index, f"{user},{pswd},{card},{coins}\n")
                     print(f"Set {username}'s coins to {new_amount}")
                     return
@@ -361,8 +387,8 @@ class BattleEnv:
         self.p1_msg = p1.queue
         self.p2_msg = p2.queue
 
-        self.c1.send("rownedcards".encode())
-        self.c2.send("rownedcards".encode())
+        self.c1.send("rselectedcards".encode())
+        self.c2.send("rselectedcards".encode())
 
         while (len(self.p1_msg) == 0 or len(self.p2_msg) == 0):
             pass

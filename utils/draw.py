@@ -141,9 +141,9 @@ def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank
             t14 = font.render("Back".upper(), True, "White")
 
         elif page == "20":
-            t11 = font.render("Item 1".upper(), True, "White")
-            t12 = font.render("Item 2".upper(), True, "White")
-            t13 = font.render("Item 3".upper(), True, "White")
+            t11 = font.render("Attack Potion".upper(), True, "White")
+            t12 = font.render("Defense Potion".upper(), True, "White")
+            t13 = font.render("Energy Potion".upper(), True, "White")
             t14 = font.render("Back".upper(), True, "White")
             
         elif page == "30":
