@@ -3,8 +3,9 @@ import numpy as np
 from sb3_contrib.ppo_mask import MaskablePPO
 from sb3_contrib.common.maskable.policies import MaskableActorCriticPolicy
 from sb3_contrib.common.wrappers import ActionMasker
+import os
 
-from battleEnv import BattleGymEnv  # Replace with your actual path/module
+from battleEnv import BattleGymEnv 
 
 # === Wrapper to support single-agent training against a random opponent ===
 class SinglePlayerWrapper(gym.Env):
@@ -48,24 +49,59 @@ def mask_fn(env: gym.Env) -> np.ndarray:
     return env.get_action_mask()  # Assuming you're training Player 0
 
 def train_agent():
+    save_dir = "saves/PPO"
+    log_dir = "ppo_teachemon_tensorboard"
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+
+    
     base_env = BattleGymEnv()
     env = MaskedEnv(base_env)
     env = ActionMasker(env, mask_fn)
 
-    model = MaskablePPO(
-        MaskableActorCriticPolicy,
-        env,
-        verbose=1,
-        tensorboard_log="./ppo_teachemon_tensorboard/"
-    )
+    model_name = input("Type in Model Name (check directory) (n for new): ")
+    if model_name == "n":
+        print("Creating new model")
+        model = MaskablePPO(
+            MaskableActorCriticPolicy,
+            env,
+            verbose=1,
+            tensorboard_log=log_dir
+        )
+        print("Succesfully created new model")
+    else:
+        model_path = f"{save_dir}/{model_name}.zip"
+        if os.path.exists(model_path):
+            print("Save found: Attempting to Load")
+            model = MaskablePPO.load("./saves/ppo_teachemon.zip")
+            print("Succesfully loaded model")
+        else:
+            print("No model found: Creating new model")
+            model = MaskablePPO(
+                MaskableActorCriticPolicy,
+                env,
+                verbose=1,
+                tensorboard_log=log_dir
+            )
+            print("Succesfully created new model")
 
-    model.learn(total_timesteps=100_000)
-    model.save("ppo_teachemon")
+    TIMESTEPS = 100_000
+    for i in range(1,2):
+        model.learn(
+            total_timesteps=TIMESTEPS,
+            reset_num_timesteps=False,
+            tb_log_name="PPO"
+        )
+        model.save(f"{save_dir}/{TIMESTEPS*i}")
 
     return model, env
 
 # === Play/Evaluate the Agent ===
-def evaluate(model, env:ActionMasker, episodes=5):
+def evaluate(model:MaskablePPO, env:ActionMasker, episodes=1):
+    print(env.action_space)
     for ep in range(episodes):
         obs, info = env.reset()
         done = False
@@ -81,4 +117,11 @@ def evaluate(model, env:ActionMasker, episodes=5):
 # === Run Training + Evaluation ===
 if __name__ == "__main__":
     model, env = train_agent()
+
+    # # just testing
+    # base_env = BattleGymEnv()
+    # env = MaskedEnv(base_env)
+    # env = ActionMasker(env, mask_fn)
+    # model = MaskablePPO.load("saves/PPO/300000.zip")
+
     evaluate(model, env)

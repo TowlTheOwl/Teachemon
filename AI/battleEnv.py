@@ -58,6 +58,20 @@ class BattleGymEnv(gym.Env):
         # 9 spaces for card data of one card 
         self.observation_space = spaces.Box(low=0.0, high=1.0, shape=(98,), dtype=np.float32)
 
+        self.last_actions = (None,None) # stores user actions for rendering
+        self.num_to_action = {
+            0: "Move 1",
+            1: "Move 2",
+            2: "Move 3",
+            3: "Item 1",
+            4: "Item 2",
+            5: "Item 3",
+            6: "Switch to Teachemon 1",
+            7: "Switch to Teachemon 2",
+            8: "Switch to Teachemon 3",
+            9: "Switch to Teachemon 4",
+        }
+
         self.reset()
 
     def reset(self, *, seed=None, options=None):
@@ -176,6 +190,7 @@ class BattleGymEnv(gym.Env):
         
     def step(self, actions:list):
         action_p1, action_p2 = actions
+        self.last_actions = actions
         
         if self.done:
             return self._get_observation(), [0, 0], self.done, {}
@@ -274,6 +289,9 @@ class BattleGymEnv(gym.Env):
         print("=" * 50)
         print(" Teachemon Battle ")
         print(f"Done: {self.done}")
+        print()
+        print(f"Player 1 Action: {self.num_to_action[int(self.last_actions[0])]}")
+        print(f"Player 2 Action: {self.num_to_action[int(self.last_actions[1])]}")
         print()
 
         for player_id in [0, 1]:
