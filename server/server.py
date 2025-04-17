@@ -7,6 +7,7 @@ import json
 from player import Player
 import csv
 import random
+import os
 
 class Server:
     def __init__(self, IP, port):
@@ -19,7 +20,8 @@ class Server:
         print(f"Number of total cards: {self.total_cards}.")
 
         print("Retrieving Teachemon data.")
-        with open("data/TeachemonData - Teachemon.csv", 'r') as file:
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'Data', 'TeachemonData - Teachemon.csv')
+        with open(file_path, 'r') as file:
             self.teachemon_data = []
             csvfile = csv.DictReader(file) # reads data file for teachemon
             for row in csvfile:
@@ -168,7 +170,15 @@ class Server:
 
                     elif msg[0] == "a":
                         self.add_card(user, msg[1:])
-                            
+                    
+                    elif msg[0] == "k":
+                        try:
+                            new_coins = int(msg[1:])
+                            self.set_coins(username, new_coins)
+                            print(f"Coins have been updated to {new_coins}")
+                        except Exception as e:
+                            print(f"Error updating coins: {e}")
+                                            
             
             except Exception as e:
                 print(e)
@@ -182,7 +192,7 @@ class Server:
                     raise e
         
     def handle_match(self, p1, p2):
-        BattleHandler(self, p1, p2, self.teachemon_data)
+        BattleEnv(self, p1, p2, self.teachemon_data)
 
     def find_login(self, username: str, password: str="") -> int:
         """
@@ -216,7 +226,7 @@ class Server:
         if (self.find_login(username) == 0):
             return False
         with open("data/data.txt", "a") as file:
-            file.write(f"\n{username},{password}," + "0"*59)
+            file.write(f"\n{username},{password}," + "0"*59 + ",50")
         return True
 
     def replace_line(self, file_name, line_num, text):
@@ -236,7 +246,10 @@ class Server:
         with open("data/data.txt", "r+") as file:
             data = file.readlines()
             for info in data:
-                user, _, card = info.split(",")
+                parts = info.strip().split(",")
+                if len(parts) < 3:
+                    continue  # skip malformed or metadata lines
+                user, _, card = parts[:3]
                 if user == username:
                     return card
         return ""
@@ -245,7 +258,21 @@ class Server:
         with open("data/data.txt", "r+") as file:
             data = file.readlines()
             for index in range(len(data)):
-                user, pswd, card = data[index].split(",")
+                parts = data[index].strip().split(",")
+
+                if len(parts) < 3:
+                    print(f"Skipping malformed line: {data[index]}")
+                    continue
+
+                user, pswd = parts[0], parts[1]
+            
+                if len(parts) == 3:
+                    card = parts[2]
+                    coins = "0"  #default value if coins are not set yet
+                else:
+                    card = "".join(parts[2:-1])
+                    coins = parts[-1]
+
                 if user == username:
                     card_list = self.card_to_list(card)
                     if card_num not in card_list:
@@ -253,8 +280,76 @@ class Server:
                     self.replace_line("data/data.txt", index, f"{user},{pswd},{self.list_to_card(card_list)}\n")
                     print(f"Replaced Line {index} with {user},{pswd},{self.list_to_card(card_list)}")
                     return
+    
+    def set_coins(self, username: str, new_amount: int):
+        with open("data/data.txt", "r+") as file:
+            data = file.readlines()
+            for index in range(len(data)):
+                parts = data[index].strip().split(",")
+                if len(parts) < 3:
+                    continue  # skip malformed lines
 
-class BattleHandler:
+                user = parts[0]
+                pswd = parts[1]
+                card = parts[2]
+                coins = parts[3] if len(parts) >= 4 else "0"
+
+                if user == username:
+                    self.replace_line("data/data.txt", index, f"{user},{pswd},{card},{coins}\n")
+                    print(f"Set {username}'s coins to {new_amount}")
+                    return
+        
+    def get_coins(self, username: str) -> int:
+        with open("data/data.txt", "r") as file:
+            data = file.readlines()
+            for info in data:
+                parts = info.strip().split(",")
+                if len(parts) < 3:
+                    continue
+                user = parts[0]
+                if user == username:
+                    if len(parts) >= 4:
+                        return int(parts[3])
+                    else:
+                        return 0  #default if coins not present
+        return 0
+    
+
+class BattleQueue:
+    def __init__(self, server:Server):
+        self.queue : List[Tuple[Player, str]] = []
+        self.server = server
+    
+    def check_queue(self):
+        for i in reversed(range(len(self.queue))):
+            conn = self.queue[i][0].conn
+            if conn not in self.server.logged_in_clients.values():
+                self.queue.pop(i)
+            
+    def add_to_queue(self, player:Player, match_string:str):
+        self.check_queue()
+        print(self.queue)
+        for i in range(len(self.queue)):
+            if self.queue[i][1] == match_string:
+                threading.Thread(target=self.server.handle_match, args=(player, self.queue[i][0])).start()
+                self.queue.pop(i)
+                return
+        self.queue.append((player, match_string))
+    
+    def remove_from_queue(self, conn: socket.socket):
+        """
+        return True if connection was in queue and was removed
+        return False if connection was not in queue; not removed
+        """
+        for i in range(len(self.queue)):
+            if self.queue[i][0] == conn:
+                self.queue.pop(i)
+                return True
+        return False
+
+
+
+class BattleEnv:
     def __init__(self, server:Server, p1:Player, p2:Player, teachemon_data:list):
         self.game_in_progress = True
         self.teachemon_data = teachemon_data
@@ -275,7 +370,11 @@ class BattleHandler:
         self.p2_cards = json.loads(self.p2_msg[0])
         self.p1_hps = [100, 100, 100, 100]
         self.p2_hps = [100, 100, 100, 100]
+        self.p1_effects = [0, 0]
+        self.p2_effects = [0, 0]
+        self.all_effects = (self.p1_effects, self.p2_effects)
         self.all_hps = (self.p1_hps, self.p2_hps)
+        self.energies = [[10, 10, 10, 10], [10, 10, 10, 10]]
         self.p1_msg.clear()
         self.p2_msg.clear()
 
@@ -347,8 +446,8 @@ class BattleHandler:
 
             curr_cards_data = (self.teachemon_data[self.p1_cards[self.curr_cards[0]]-1], self.teachemon_data[self.p2_cards[self.curr_cards[1]]-1])
             # give 20 seconds to choose, tell users to pick a move
-            self.send_info_to_both_players("smgmove10")
-            self.wait_for_response_starts_with((0, 1), ("m", "i", "s"), ("n",), 12)# 2 second buffer to receive messages
+            self.send_info_to_both_players("smgmove20")
+            self.wait_for_response_starts_with((0, 1), ("m", "i", "s"), ("n",), 22)# 2 second buffer to receive messages
             # receive messages
             possible_moves = ["m", "i", "s"]
             p1_action = None
@@ -362,75 +461,27 @@ class BattleHandler:
             self.p2_msg.clear()
 
             actions = (p1_action, p2_action)
-            # handle actions
-            """
-            m = Move
-            i = Item Use
-            s = Swap
-            """
-            abilities = [None, None]
-            items = [None, None]
-            first_to_animate = -1
-            for i in range(2):
-                action = actions[i]
-                if action is not None:
-                    action_type = action[0]
-                    move_num = action[1]
-                    if action_type == "m":
-                        abilities[i] = int(move_num)
-                    elif action_type == "i":
-                        items[i] = int(move_num)
-                    elif action_type == "s":
-                        self.curr_cards[i] = int(move_num)  # swap is immediate - swap before any abilities cast
-                        first_to_animate = i
             
-            # handle user actions
-            # items are used immediately
-            ########BLAVKLJBLKJKDJBLBJDK########
-            
-            # cast abilities
-            first_to_cast = 0
-            num_cast = 0
-            if abilities[0] is not None and abilities[1] is not None:  # if both players cast
-                first_to_cast = 0
-                num_cast = 2
-                user1speed = int(curr_cards_data[0][f"Move {abilities[0]+1} Speed"])
-                user2speed = int(curr_cards_data[1][f"Move {abilities[1]+1} Speed"])
-                if user1speed > user2speed:
-                    first_to_cast = 1
-                elif user1speed == user2speed:
-                    # coin toss
-                    first_to_cast = random.randint(0,1)
-                
-            elif abilities[1] is not None: # only user 2 casted
-                first_to_cast = 1
-                num_cast = 1
-            elif abilities[0] is not None: # only user 1 casted
-                first_to_cast = 0
-                num_cast = 1
-            if first_to_animate == -1:
-                first_to_animate = first_to_cast
-            
-            i = 0
-            print(f"Number of Casts: {num_cast}")
-            print(abilities)
+            # carry out actions
+            first_to_animate = self.step(actions, curr_cards_data)
 
-            print(f"P1 Queue: {self.p1_msg}")
-            print(f"P2 Queue: {self.p2_msg}")
-            while num_cast > 0:
-                target_idx = (first_to_cast + i) % 2
-                opp_idx = (first_to_cast + i + 1) % 2
-                if self.all_hps[target_idx][self.curr_cards[target_idx]] != 0:
-                    self.cast_ability(curr_cards_data[target_idx], int(abilities[target_idx]), self.curr_cards[opp_idx], self.all_hps[opp_idx])
-                i += 1
-                num_cast -= 1
-
-            self.send_info_to_both_players(f"smm0{p1_action}'{p2_action}'{first_to_animate}'{self.p1_hps}'{self.p2_hps}") # send moves
+            self.send_info_to_both_players(f"smm0{p1_action}'{p2_action}'{first_to_animate}'{self.p1_hps}'{self.p2_hps}") # send moves and results back to players
             """
-            user action 1, user action 2, first to cast, hp1, hp2
+            user action 1, user action 2, first to animate, hp1, hp2
             """
             # wait for users to finish animation
             completed = self.wait_for_response("anicomp", 30) # client sends "xanicomp" (ANImation COMPlete)
+
+            # the turn is over, update effects
+            self.p1_effects[0] = max(0, self.p1_effects[0]-1)
+            self.p2_effects[0] = max(0, self.p2_effects[0]-1)
+            self.p1_effects[1] = 0
+            self.p2_effects[1] = 0
+            for i in range(len(self.energies)):
+                target_energies = self.energies[i]
+                for j in range(len(target_energies)):
+                    target_energies[j] = min(10, target_energies[j]+1)
+
             if not all(completed):
                 if not completed[0]:
                     self.c2.send("smDC".encode())
@@ -445,9 +496,17 @@ class BattleHandler:
             winner = 1
         self.send_info_to_both_players(f"smd{winner}")
     
-    def cast_ability(self, card_data:dict, ability_idx:int, opp_curr_card: int, opp_hps:list):
+    def cast_ability(self, player_idx:int, card_data:dict, ability_idx:int, opp_curr_card: int, opp_hps:list):
         # cast the selected ability, calculate damage
+        opp_idx = (player_idx+1)%2
         damage = int(card_data[f"Move {ability_idx + 1} Damage"])
+        if self.all_effects[player_idx][0] > 0:     # check for player attack potion effect
+            damage *= 1.5
+        
+        if self.all_effects[opp_idx][1] > 0:    # check for opponent defense potion effect
+            damage = max(damage-30, 0)
+        
+        self.energies[player_idx][self.curr_cards[player_idx]] -= int(card_data[f"Move {ability_idx + 1} Cost"])
         opp_hps[opp_curr_card] -= damage
         if opp_hps[opp_curr_card] < 0:
             opp_hps[opp_curr_card] = 0
@@ -472,6 +531,96 @@ class BattleHandler:
         
         return responses
         
+    def step(self, actions:list, curr_cards_data):
+        # handle actions
+        """
+        m = Move
+            Based on the cards
+        i = Item Use
+            
+        s = Swap
+            Can swap to other cards that are not dead
+        """
+        abilities = [None, None]
+        items = [None, None]
+        first_to_animate = -1
+        for i in range(2):
+            action = actions[i]
+            if action is not None:
+                action_type = action[0]
+                move_num = action[1]
+                if action_type == "m":
+                    abilities[i] = int(move_num)
+                elif action_type == "i":
+                    items[i] = int(move_num)
+                elif action_type == "s":
+                    hps = (self.p1_hps, self.p2_hps)
+                    if hps[i][move_num] > 0:
+                        self.curr_cards[i] = int(move_num)  # swap is immediate - swap before any abilities cast
+                    first_to_animate = i
+        
+        # handle user actions
+        # items are used immediately
+        """
+        0:    Attack Potion: Multiply attack damage of the current teachemon by 1.5x for next three turns 
+
+        1:    Defense Potion: Gives a shield to the current pokemon 30HP (does not stack)
+
+        2:    Energy Potion: Current Teachemon gains 5 Energy 
+        """
+        for i in range(2):
+            if items[i] is not None:
+                if items[i] == 0: # attack potion
+                    self.all_effects[i][0] = 3
+                elif items[i] == 1: # defense potion
+                    self.all_effects[i][1] = 1
+                elif items[i] == 2: # energy potion
+                    self.energies[i][self.curr_cards[i]] = min(self.energies[i][self.curr_cards[i]]+5, 10)
+                if first_to_animate == -1:
+                    first_to_animate = i
+
+        # cast abilities
+        first_to_cast = 0
+        num_cast = 0
+        if abilities[0] is not None and abilities[1] is not None:  # if both players cast
+            first_to_cast = 0
+            num_cast = 2
+            user1speed = int(curr_cards_data[0][f"Move {abilities[0]+1} Speed"])
+            user2speed = int(curr_cards_data[1][f"Move {abilities[1]+1} Speed"])
+            if user1speed > user2speed:
+                first_to_cast = 1
+            elif user1speed == user2speed:
+                # coin toss
+                first_to_cast = random.randint(0,1)
+            
+        elif abilities[1] is not None: # only user 2 casted
+            first_to_cast = 1
+            num_cast = 1
+        elif abilities[0] is not None: # only user 1 casted
+            first_to_cast = 0
+            num_cast = 1
+        if first_to_animate == -1:
+            first_to_animate = first_to_cast
+        
+        i = 0
+        # print(f"Number of Casts: {num_cast}")
+        # print(abilities)
+
+        # print(f"P1 Queue: {self.p1_msg}")
+        # print(f"P2 Queue: {self.p2_msg}")
+        
+        # process abilities
+
+        while num_cast > 0:
+            target_idx = (first_to_cast + i) % 2
+            opp_idx = (first_to_cast + i + 1) % 2
+            if self.all_hps[target_idx][self.curr_cards[target_idx]] != 0:
+                self.cast_ability(target_idx, curr_cards_data[target_idx], int(abilities[target_idx]), self.curr_cards[opp_idx], self.all_hps[opp_idx])
+            i += 1
+            num_cast -= 1
+
+
+        return first_to_animate
     
     def wait_for_response_starts_with(self, targets:list, response_key:tuple, catch_key:tuple, max_time:int):
         responses = [1, 1]
@@ -499,37 +648,9 @@ class BattleHandler:
                 self.c1.send("smDC".encode())
                 self.game_in_progress = False
 
-class BattleQueue:
-    def __init__(self, server:Server):
-        self.queue : List[Tuple[Player, str]] = []
-        self.server = server
-    
-    def check_queue(self):
-        for i in reversed(range(len(self.queue))):
-            conn = self.queue[i][0].conn
-            if conn not in self.server.logged_in_clients.values():
-                self.queue.pop(i)
-            
-    def add_to_queue(self, player:Player, match_string:str):
-        self.check_queue()
-        print(self.queue)
-        for i in range(len(self.queue)):
-            if self.queue[i][1] == match_string:
-                threading.Thread(target=self.server.handle_match, args=(player, self.queue[i][0])).start()
-                self.queue.pop(i)
-                return
-        self.queue.append((player, match_string))
-    
-    def remove_from_queue(self, conn: socket.socket):
-        """
-        return True if connection was in queue and was removed
-        return False if connection was not in queue; not removed
-        """
-        for i in range(len(self.queue)):
-            if self.queue[i][0] == conn:
-                self.queue.pop(i)
-                return True
-        return False
+
+
+
 
 if __name__ == "__main__":
     # Server's IPv4 address, port
@@ -539,3 +660,4 @@ if __name__ == "__main__":
     serverObj = Server(serverIP, port)
     input()
     serverObj.close()
+

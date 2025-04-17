@@ -95,7 +95,6 @@ pointer_on = True
 pointer_x = 55
 pointer_y = 257
 left_page = 1
-coins = 0
 circle_x = 0
 circle_y = 0
 circle_angle = 0
@@ -117,6 +116,11 @@ WHITE = (225, 225, 225)
 card_started = False
 card_anim = 0
 max_cardanim = 30
+#not enough coins display
+no_coins = ""
+no_coins_timer = 0
+no_coins_duration = 2000
+owned = False
 
 #sprite animation for card dispenser
 back = (0,0,0)
@@ -158,6 +162,9 @@ cut_scene_frame = 0
 cut_scene_cooldown = 75
 for i in range(33):
     cut_scene_animation.append(get_image(cut_scene_sheet, i, 1000, 600, 1.3, back))
+# variable to determine what to transition to after the cut scene
+cut_to = 1
+trade_success = False
 
 #variable for card zoom factor
 card_zoom = 1
@@ -226,11 +233,17 @@ running = [True]
 
 server_messages = [None, None, None, None, None, None, None] # check utils
 
+coins = 50
 selected_cards = [None, None, None, None]
-userdata = [username, password, [], selected_cards] # username, password, owned cards, selected cards
+userdata = [username, password, [], selected_cards, coins] # username, password, owned cards, selected cards
+coins = userdata[4]
 cards_owned = userdata[2]
 must_swap = False
 opponent_username = None
+
+# for trading - players can only trade with other players who are also on the trade page b/c live trading
+# similar to finding an opponent to battle but instead finding all the possible trade players
+available_players = []
 
 threading.Thread(target=handle_server_connection, args=(connection,running,server_messages,userdata)).start()
 
@@ -272,7 +285,21 @@ while running[0]:
                 elif pointer_pos < 7:
                     pointer_pos += 1
             elif page == "Trade":
-                pointer_pos = (pointer_pos%2) + 1
+                if pointer_pos < 3:
+                    pointer_pos += 1
+            elif page == "Choose Trade Card":
+                if pointer_pos < 2:
+                    pointer_on = True
+                    pointer_pos += 1
+            # replace this next sprint (?), rn cut scene to view trade is triggered by pressing the DOWN button 
+            # but once server connection is implemented, cut scene will be triggered once the other players selects their card
+            elif page == "Trade Loading":
+                page = "Cut"     
+                cut_to = 3 
+            
+            elif page == "View Trade":
+                if pointer_pos < 2:
+                    pointer_pos += 1
             else:
                 pointer_pos += 1
 
@@ -294,7 +321,22 @@ while running[0]:
                 elif pointer_pos > 5:
                     pointer_pos -= 1
             elif page == "Trade":
-                pointer_pos = (pointer_pos%2) + 1
+                if pointer_pos > 1:
+                    pointer_pos -= 1
+            elif page == "View Trade":
+                if pointer_pos > 1:
+                    pointer_pos -= 1
+                    
+            # replace this next sprint (?), rn cut scene is triggered by pressing the UP button 
+            # but once server connection is implemented, cut scene will be triggered once the other players selects this player (must match)
+            elif page == "Trade Loading":
+                page = "Cut"     
+                cut_to = 2 
+            elif page == "Choose Trade Card":
+                if pointer_pos > 1:
+                    pointer_on = False
+                    pointer_pos -= 1                    
+
             else:
                 if pointer_pos > 1:
                     pointer_pos -= 1
@@ -345,8 +387,22 @@ while running[0]:
                 if pointer_pos == 1:
                     page = "Menu"
             elif page == "Trade":
-                if pointer_pos == 2:
+                if pointer_pos == 4:
                     page = "Menu"
+                else: 
+                    page = "Trade Loading"
+                    keep_pointer = True
+            elif page == "Choose Trade Card":
+                if pointer_pos == 2:
+                    page = "Trade Loading"
+            elif page == "View Trade":
+                page = "Trade Result"
+                if pointer_pos == 1:
+                    trade_success = True
+                elif pointer_pos == 2:
+                    trade_success = False
+            elif page == "Trade Result":
+                page = "Menu"
             elif page == "Choose Card":
                 keep_pointer = True
                 if pointer_pos <= 4:
@@ -401,7 +457,14 @@ while running[0]:
                                 pointer_pos = 2
                     elif battle_page in ("10", "20"):
                         if pointer_pos < 4:
-                            selected_move = battle_page[0] + str(pointer_pos)
+                            if battle_page == "10":
+                                # check whether the player has enough energy to use the move
+                                if energy[curr_cards[player_num]] > int(teachemon_data[selected_cards[curr_cards[player_num]]-1][f"Move {pointer_pos} Cost"]):
+                                    selected_move = battle_page[0] + str(pointer_pos)
+                                else:
+                                    display_box(screen, "NOT ENOUGH ENERGY", base_font, 1)
+                            else:
+                                selected_move = battle_page[0] + str(pointer_pos)
                         elif pointer_pos == 4:
                             pointer_pos = 1
                             battle_page = "00"
@@ -460,8 +523,10 @@ while running[0]:
                     page = "Start"
                     username_box.reset()
                     password_box.reset()
+            
             if not keep_pointer:
                 pointer_pos = 1
+            
         
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
@@ -489,7 +554,10 @@ while running[0]:
                     pointer_pos -= 1
                 if pointer_pos == 5:
                     if pointer_hover>0: pointer_hover-=1
-    
+
+            elif page == "Choose Trade Card":
+                if pointer_hover>0: pointer_hover-=1
+
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
             if page == "SBattle" or page == "Battle":
@@ -512,30 +580,45 @@ while running[0]:
                     pointer_pos += 1
                 if pointer_pos == 5:
                     if pointer_hover<len(userdata[2])-1: pointer_hover+=1
+                    
+            elif page == "Trade":
+                if pointer_pos < 4:
+                    pointer_pos = 4
 
+            elif page == "Choose Trade Card":
+                if pointer_hover<len(userdata[2])-1: pointer_hover+=1
 
-        if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha": 
+        if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha":
             if lever_rect.collidepoint(event.pos) and not card_visible:
-                gacha = random.randint(1, 59)
+                if coins >= 10:
+                    coins -= 10
+                    userdata[4] = coins
+                    connection.send(f"k{userdata[4]}".encode())
+                    
+                    gacha = random.randint(1, 59)
                 
-                if gacha not in cards_owned:
-                    cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
-                    connection.send(f"a{gacha}".encode())
+                    if gacha not in cards_owned:
+                        cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
+                        connection.send(f"a{gacha}".encode())
+                        owned = True
 
-                current_card = card_images[gacha]
-                card_rect = current_card.get_rect(center=(ScreenWidth // 2, ScreenHeight // 2))
-                card_visible = True
-                #fade effect
-                alpha = 0
-                fading_in = True
-                #card display animation
-                dispalay_started = False
-                cardanim_frame = 0
-                #update animation
-                if action == 1:
-                    action -= 1
-                action += 1
-                dispenser_frame = 0
+                    current_card = card_images[gacha]
+                    card_rect = current_card.get_rect(center=(ScreenWidth // 2, ScreenHeight // 2))
+                    card_visible = True
+                    #fade effect
+                    alpha = 0
+                    fading_in = True
+                    #card display animation
+                    dispalay_started = False
+                    cardanim_frame = 0
+                    #update animation
+                    if action == 1:
+                        action -= 1
+                    action += 1
+                    dispenser_frame = 0
+                else:
+                    no_coins = "NOT ENOUGH COINS"
+                    no_coins_timer = pygame.time.get_ticks()
             elif card_visible and card_rect and card_rect.collidepoint(event.pos):
                 #hide card if clicked
                 display_started = False
@@ -708,6 +791,7 @@ while running[0]:
                     server_messages[3] = None
                     print("DC\n")
                 elif server_messages[3][0] == "u":
+                    # initialize variables for the game
                     user_datas = server_messages[3][1:].split("'")
                     opponent_username = user_datas[opp_num]
                     opponent_cards = json.loads(user_datas[opp_num+2])
@@ -720,8 +804,6 @@ while running[0]:
                     other_cards = selected_cards.copy()
                     other_cards.pop(0)
                     other_cards = tuple(other_cards)
-                    time.sleep(3)
-                    pointer_pos = 1
                     selected_move = None
                     first_frame = False
                     names = [None, None]
@@ -732,8 +814,16 @@ while running[0]:
                     all_cards[(player_num+1)%2] = opponent_cards
                     must_swap = False
                     actions = [None, None]
+                    energy = [10, 10, 10, 10]
+                    self_effect = [0, 0]
+                    opp_effect = [0, 0]
                     waiting = False
+
+                    
+                    time.sleep(3)
+                    pointer_pos = 1
                     page = "Cut"
+                    cut_to = 1
                     print("CUT SCENE\n")
                 else:
                     print(f"Wart {server_messages[3]}")
@@ -846,6 +936,13 @@ while running[0]:
                 screen.blit(game_announcement, game_announcement_rect)
                 selected_move_display = small_font.render(f"SELECTED {selected_move}".upper(), True, (0, 0, 0))
                 screen.blit(selected_move_display, selected_move_display.get_rect(center=(center_x, center_y+50)))
+                energy_display = small_font.render(f"ENERGY {energy[curr_cards[player_num]]}", True, (0, 0, 0))
+                screen.blit(energy_display, energy_display.get_rect(center=(center_x, center_y-50)))
+                self_effects_display = small_font.render(f"EFFECTS1 {self_effect[0]} {self_effect[1]}", True, (0, 0, 0))
+                opp_effects_display = small_font.render(f"EFFECTS2 {opp_effect[0]} {opp_effect[1]}", True, (0, 0, 0))
+                screen.blit(self_effects_display, self_effects_display.get_rect(center=(center_x-300, center_y+50)))
+                screen.blit(opp_effects_display, opp_effects_display.get_rect(center=(center_x+300, center_y+50)))
+
                 if timer_on:
                     timer.draw()
                     if timer.time == 0:
@@ -853,6 +950,8 @@ while running[0]:
                         # send selected move to the server
                         if selected_move is not None:
                             sent_move = ("m", "i", "s")[int(selected_move[0])-1] + str(int(selected_move[1])-1)
+                            if sent_move[0] == "m":
+                                energy[curr_cards[player_num]] -= int(teachemon_data[selected_cards[curr_cards[player_num]]-1][f"Move {selected_move[1]} Cost"])
                         else:
                             sent_move = "n0"
                         connection.send(f"x{sent_move}".encode())
@@ -879,6 +978,13 @@ while running[0]:
                                 card_num = selected_cards[curr_cards[player_num]] if source == player_num else opponent_cards[curr_cards[source]]
                                 data = teachemon_data[card_num-1]
                                 move_info = (source_name.upper(), data["Name"].upper(), data[f"Move {int(action_name[1]) + 1} Name"].upper(), data[f"Move {int(action_name[1]) + 1} Damage"].upper())
+                                scene = 0
+                                print_delay = 3
+                            elif action_name[0] == "i":
+                                card_num = selected_cards[curr_cards[player_num]] if source == player_num else opponent_cards[curr_cards[source]]
+                                data = teachemon_data[card_num-1]
+                                potion_names = ("Attack Potion", "Defense Potion", "Energy Potion")
+                                item_info = (source_name.upper(), data["Name"].upper(), potion_names[int(action_name[1])])
                                 scene = 0
                                 print_delay = 3
                             if source == player_num:
@@ -980,6 +1086,59 @@ while running[0]:
                                         if frame >= 24*2:
                                             animating = 2
                                     frame += 1
+                            elif action_name[0] == "i":
+                                screen.blit(animation_bg, animation_bg_pos)
+                                if animation_bg_pos[0] < 0:
+                                    animation_bg_pos = (animation_bg_pos[0] + 50, animation_bg_pos[1] + 30)
+                                else:
+                                    """
+                                    Background fully animated -> Need to display:
+                                    - Player Name
+                                    - Teachemon Name
+                                    - Item Name
+                                    """
+                                    if scene >= 0:
+                                        if scene == 0:
+                                            if (frame//print_delay <= len(item_info[0])):
+                                                name = base_font.render(item_info[0][:frame//print_delay], True, (0, 0, 0))
+                                            else:
+                                                name = base_font.render(item_info[0], True, (0, 0, 0))
+                                                if frame//print_delay - len(item_info[0]) == 2:
+                                                    scene += 1
+                                                    frame = 0
+                                        else:
+                                            name = base_font.render(item_info[0], True, (0, 0, 0))
+                                        screen.blit(name, (100, 100))
+                                    if scene >= 1:
+                                        if scene == 1:
+                                            if (frame//print_delay <= len(item_info[1])):
+                                                tname = base_font.render(item_info[1][:frame//print_delay], True, (0, 0, 0))
+                                            else:
+                                                tname = base_font.render(item_info[1], True, (0, 0, 0))
+                                                if frame//print_delay - len(item_info[1]) == 2:
+                                                    scene += 1
+                                                    frame = 0
+                                        else:
+                                            tname = base_font.render(item_info[1], True, (0, 0, 0))
+                                        screen.blit(tname, (250, 200))
+                                    if scene >= 2:
+                                        if scene == 2:
+                                            if (frame//print_delay <= len(item_info[2])):
+                                                item = base_font.render(item_info[2][:frame//print_delay], True, (0, 0, 0))
+                                            else:
+                                                item = base_font.render(item_info[2], True, (0, 0, 0))
+                                                if frame//print_delay - len(item_info[2]) == 2:
+                                                    scene += 1
+                                                    frame = 0
+                                        else:
+                                            item = base_font.render(item_info[2], True, (0, 0, 0))
+                                        screen.blit(item, (400, 300))
+                                    if scene > 2:
+                                        if frame >= 24*2:
+                                            animating = 2
+                                    frame += 1
+
+                                    
                             else:
                                 animating = 2
 
@@ -991,10 +1150,33 @@ while running[0]:
                                     other_cards = selected_cards.copy()
                                     other_cards.remove(selected_cards[curr_cards[player_num]])
                                     other_cards = tuple(other_cards)
+                            elif action_name[0] == "i":
+                                if action_name[1] == "0":
+                                    if is_self:
+                                        self_effect[0] = 3
+                                    else:
+                                        opp_effect[0] = 3
+                                elif action_name[1] == "1":
+                                    if is_self:
+                                        self_effect[1] = 1
+                                    else:
+                                        opp_effect[1] = 1
+                                elif action_name[1] == "2":
+                                    if is_self:
+                                        energy[curr_cards[player_num]] = min(10, energy[curr_cards[player_num]] + 5)
                             move_num += 1
                     else:
                         move_num+=1
                 else:
+                    ### handle end of turn events ###
+                    # update effects
+                    self_effect[0] = max(self_effect[0]-1, 0)
+                    self_effect[1] = 0
+                    opp_effect[0] = max(opp_effect[0]-1, 0)
+                    opp_effect[1] = 0
+                    for i in range(len(energy)):
+                        energy[i] = min(10, energy[i]+1)
+
                     connection.send("xanicomp".encode())
                     game_status = "waiting"
                 if first_frame:
@@ -1073,7 +1255,7 @@ while running[0]:
         pointer_y = 550
         draw_claim(screen, button_exit, font, coins, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin,
                    alpha, card_started, card_anim, max_cardanim, fade_started,
-                   cardanim_list, cardanim_frame, display_started)
+                   cardanim_list, cardanim_frame, display_started, no_coins, no_coins_duration, no_coins_timer, owned, big_font)
         current_time = pygame.time.get_ticks()
 
         if card_visible:
@@ -1108,25 +1290,66 @@ while running[0]:
                 dispenser_frame = 0
     
     elif page == "Trade":
+        pointer_on = True
+        if pointer_pos == 4:
+            pointer_x = 750
+            pointer_y = 550
+        else: 
+            pointer_x = 150
+            pointer_y = 200 + 100 * (pointer_pos - 1)
+        # send some server message that this player is trying to trade and receive from server list of available players trying to trade
+        # placeholder
+        available_players = ["PLAYER 1", "PLAYER 2", "PLAYER 3", "PLAYER 4", "PLAYER 5"]
+        draw_trade(screen, cards_owned, card_images, button_exit, big_font, binder_highlight, available_players)
+    
+    elif page == "Trade Loading":
+        pointer_on = False
+        # "up to continue" is temporary placeholder until server connections are implemented
+        draw_trade_loading(screen, small_font, available_players[pointer_pos - 1])
+    
+    elif page == "Choose Trade Card":
+        pointer_x = 350
+        pointer_y = 530
+        draw_trade_wheel(screen, userdata[2], pointer_hover, base_font, big_font, text_go, text_go_bg, text_go_rect, card_images)
+        screen.blit(pointer_down, (485, 230))
+        screen.blit(pointer_up, (485, 400))
+    
+    elif page == "View Trade":
+        # last argument card_images[0] (recieve card) is placeholder for now
+        # replace once server connection is implemented
+        pointer_on = True
+        pointer_x = 350
+        pointer_y = 165 + pointer_pos * 130
+        draw_view_trade(screen, big_font, base_font, card_images[userdata[2][pointer_hover]], card_images[0])
+
+    elif page == "Trade Result": 
+        pointer_on = True
         pointer_x = 750
         pointer_y = 550
-        if pointer_pos == 2:
-            pointer_on = True
-        else:
-            pointer_on = False
-        draw_trade(screen, cards_owned, card_images, button_exit, big_font, binder_highlight, pointer_up)
-    
+        # if trade_success:
+            # add the traded card to the other player idk how to do that lololol
+            # remove the traded card from this player userdata
+        draw_trade_result(screen, big_font, trade_success, button_exit)
+
     elif page == "Cut":
         pointer_on = False
-        draw_cut(screen, button_exit, fontx3, cut_scene_animation, cut_scene_frame, vs_bg, main_screen_bg, userdata[0], opponent_username)
-        
+        draw_cut(screen, button_exit, fontx3, big_font, cut_scene_animation, cut_scene_frame, vs_bg, main_screen_bg, userdata[0], opponent_username, cut_to)
+
         current_time = pygame.time.get_ticks()
         if current_time - last_update >= cut_scene_cooldown:
             if cut_scene_frame == 32:
                 pygame.time.wait(1500)
                 cut_scene_frame = 0
-                page = "Battle"
-                connection.send("xCONNECTED".encode())
+                if cut_to == 1:
+                    page = "Battle"
+                    connection.send("xCONNECTED".encode())
+                if cut_to == 2:
+                    page = "Choose Trade Card"
+                    # send server connection 
+                if cut_to == 3:
+                    page = "View Trade"
+                    # send server connection 
+
             else:
                 cut_scene_frame += 1
                 last_update = current_time

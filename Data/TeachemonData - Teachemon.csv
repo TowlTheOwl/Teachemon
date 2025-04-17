@@ -1,19 +1,19 @@
 Name,Type,HP,Move 1 Name,Move 1 Damage,Move 1 Speed,Move 1 Cost,Move 2 Name,Move 2 Damage,Move 2 Speed,Move 2 Cost,Move 3 Name,Move 3 Damage,Move 3 Speed,Move 3 Cost
-Hong,Tech,100,HiChew Toss,20,1,1,Daniel farts,2,2,2,Get house points,3,3,3
-Walker,Tech,100,Look!,20,1,1,Biking,2,2,2,Robots,3,3,3
-Miller,Random,100,Pop Quiz,20,1,1,Breaking News!,20,1,1,Look at My Cat,20,1,1
-Yang,Random,100,Attack 1,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
-Procella,Random,100,Restarting,20,1,1,Fixing Anything,20,1,1,Attack 3,20,1,1
-Johnston,Random,100,Giving Brutal Exams ,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
-Fisher,Random,100,Attack 1,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
-Mahaffey,Random,100,Attack 1,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
-Duran,Random,100,Attack 1,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
-Hamada,Random,100,And.. Action!,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
-Lasby,Random,100,Dash Attack,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
-Heckendorn,Random,100,Attack 1,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
-Lovelace,Random,100,Attack 1,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
-Soetrisno,Random,100,Question of The Day!,20,1,1,Play Piano,20,1,1,Attack 3,20,1,1
-Oliver,Random,100,Attack 1,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
+Hong,Tech,100,HiChew Toss,60,1,8,Daniel farts,50,2,8,Get house points,40,3,8
+Walker,Tech,100,Look,40,2,5,Biking,20,4,2,Robots,40,3,6
+Miller,History,100,Pop Quiz,60,1,10,Breaking News!,20,5,2,Look at My Cat,30,5,3
+Yang,Tech,100,Debug,40,3,5,Pandas,30,5,5,Soothing Music,20,5,3
+Procella,Tech,100,Restarting,20,1,1,Fixing Anything,20,1,1,Stylus Attack,20,1,1
+Johnston,Math,100,Math Joke,20,1,1,Brutal Exam,20,1,1,dy/dx,20,1,1
+Fisher,Music,100,Soprano,20,1,1,Alto,20,1,1,Tenor,20,1,1
+Mahaffey,Music,100,Trumpet Attack,20,1,1,Lyricist,20,1,1,Conducting,20,1,1
+Duran,Science,100,Class Policy,20,1,1,3D Printing,20,1,1,Armour,20,1,1
+Hamada,Arts,100,And.. Action!,20,1,1,Edit,20,1,1,Photo Attack,20,1,1
+Lasby,Lit,100,Dash Attack,20,1,1,Grammar Lesson,20,1,1,Competition,20,1,1
+Heckendorn,History,100,Frisbee,20,1,1,Quiz Master,20,1,1,Candy,20,1,1
+Lovelace,Special,100,Best House,20,1,1,House Points,20,1,1,British,20,1,1
+Soetrisno,Math,100,Question of The Day!,20,1,1,Play Piano,20,1,1,Play Games,20,1,1
+Oliver,PE,100,5 Push Ups,20,1,1,Touchdown,20,1,1,Motivational Speech,20,1,1
 Card 16,Random,100,Attack 1,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
 Card 17,Random,100,Attack 1,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
 Card 18,Random,100,Attack 1,20,1,1,Attack 2,20,1,1,Attack 3,20,1,1
