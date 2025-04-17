@@ -172,12 +172,10 @@ class Server:
                     elif msg[0] == "k":
                         try:
                             new_coins = int(msg[1:])
-                            if user is not None:
-                                self.update_coins(user, new_coins)
-                            else:
-                                print("Tried to update coins before login.")
-                        except ValueError:
-                            print("Invalid coin value:", msg)
+                            self.set_coins(username, new_coins)
+                            print(f"Coins have been updated to {new_coins}")
+                        except Exception as e:
+                            print(f"Error updating coins: {e}")
                                             
             
             except Exception as e:
@@ -246,7 +244,10 @@ class Server:
         with open("data/data.txt", "r+") as file:
             data = file.readlines()
             for info in data:
-                user, _, card = info.split(",")
+                parts = info.strip().split(",")
+                if len(parts) < 3:
+                    continue  # skip malformed or metadata lines
+                user, _, card = parts[:3]
                 if user == username:
                     return card
         return ""
@@ -255,7 +256,21 @@ class Server:
         with open("data/data.txt", "r+") as file:
             data = file.readlines()
             for index in range(len(data)):
-                user, pswd, card = data[index].split(",")
+                parts = data[index].strip().split(",")
+
+                if len(parts) < 3:
+                    print(f"Skipping malformed line: {data[index]}")
+                    continue
+
+                user, pswd = parts[0], parts[1]
+            
+                if len(parts) == 3:
+                    card = parts[2]
+                    coins = "0"  #default value if coins are not set yet
+                else:
+                    card = "".join(parts[2:-1])
+                    coins = parts[-1]
+
                 if user == username:
                     card_list = self.card_to_list(card)
                     if card_num not in card_list:
@@ -268,31 +283,35 @@ class Server:
         with open("data/data.txt", "r+") as file:
             data = file.readlines()
             for index in range(len(data)):
-                user, pswd, card, _ = data[index].strip().split(",")
+                parts = data[index].strip().split(",")
+                if len(parts) < 3:
+                    continue  # skip malformed lines
+
+                user = parts[0]
+                pswd = parts[1]
+                card = parts[2]
+                coins = parts[3] if len(parts) >= 4 else "0"
+
                 if user == username:
-                    self.replace_line("data/data.txt", index, f"{user},{pswd},{card},{new_amount}\n")
-                    print(f"[Server] Set {username}'s coins to {new_amount}")
+                    self.replace_line("data/data.txt", index, f"{user},{pswd},{card},{coins}\n")
+                    print(f"Set {username}'s coins to {new_amount}")
                     return
-    
+        
     def get_coins(self, username: str) -> int:
         with open("data/data.txt", "r") as file:
             data = file.readlines()
             for info in data:
-                user, _, _, coins = info.strip().split(",")
+                parts = info.strip().split(",")
+                if len(parts) < 3:
+                    continue
+                user = parts[0]
                 if user == username:
-                    return int(coins)
-        return 0 
+                    if len(parts) >= 4:
+                        return int(parts[3])
+                    else:
+                        return 0  #default if coins not present
+        return 0
     
-    def update_coins(self, username: str, coins: int):
-        with open("data/data.txt", "r") as file:
-            data = file.readlines()
-            for index in range(len(data)):
-                line = data[index].strip()
-                user, pswd, card, _= line.split(",")
-                if user == username:
-                    self.replace_line("data/data.txt", index, f"{user},{pswd},{card},{coins}\n")
-                    print(f"Updated coins for {user} to {coins}")
-                    return
 
 class BattleHandler:
     def __init__(self, server:Server, p1:Player, p2:Player, teachemon_data:list):

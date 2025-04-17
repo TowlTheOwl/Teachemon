@@ -95,7 +95,6 @@ pointer_on = True
 pointer_x = 55
 pointer_y = 257
 left_page = 1
-coins = 50
 circle_x = 0
 circle_y = 0
 circle_angle = 0
@@ -231,8 +230,10 @@ running = [True]
 
 server_messages = [None, None, None, None, None, None, None] # check utils
 
+coins = 50
 selected_cards = [None, None, None, None]
 userdata = [username, password, [], selected_cards, coins] # username, password, owned cards, selected cards
+coins = userdata[4]
 cards_owned = userdata[2]
 must_swap = False
 opponent_username = None
