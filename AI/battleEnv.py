@@ -102,9 +102,9 @@ class BattleGymEnv(gym.Env):
         # both players start with the first card in their deck
         self.curr_cards = [0, 0]
 
-        return self._get_observation(), {}
+        return self._get_observation(0), {}
 
-    def _get_observation(self):
+    def _get_observation(self, player_num):
         def get_player_obs(cards, hps, energies, curr_card_idx, effects):
             # selected card (one-hot)
             selected = [0] * 4
@@ -140,7 +140,10 @@ class BattleGymEnv(gym.Env):
         p1_obs = get_player_obs(self.p1_cards, self.p1_hps, self.energies[0], self.curr_cards[0], self.p1_effects)
         p2_obs = get_player_obs(self.p2_cards, self.p2_hps, self.energies[1], self.curr_cards[1], self.p2_effects)
 
-        return np.array(p1_obs + p2_obs, dtype=np.float32)
+        if player_num == 0:
+            return np.array(p1_obs + p2_obs, dtype=np.float32)
+        elif player_num == 1:
+            return np.array(p2_obs + p1_obs, dtype=np.float32)
     
     def get_action_mask(self, player_idx):
         mask = [1] * 10 # assume all valid to start
@@ -193,7 +196,7 @@ class BattleGymEnv(gym.Env):
         self.last_actions = actions
         
         if self.done:
-            return self._get_observation(), [0, 0], self.done, {}
+            return self._get_observation(0), [0, 0], self.done, {}
 
         """
         0: move 1
@@ -283,7 +286,7 @@ class BattleGymEnv(gym.Env):
 
         info = {"action_masks": [self.get_action_mask(0), self.get_action_mask(1)]}
 
-        return self._get_observation(), rewards, self.done, False, info
+        return self._get_observation(0), rewards, self.done, False, info
     
     def render(self, mode='human'):
         print("=" * 50)
