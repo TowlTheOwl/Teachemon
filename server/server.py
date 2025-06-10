@@ -429,46 +429,6 @@ class BattleEnv:
                 dead.append(0)
             if self.p2_hps[self.curr_cards[1]] == 0:
                 dead.append(1)
-            if len(dead) != 0:
-                print("Player Dead")
-                self.send_info_to_both_players(f"smm1{json.dumps(dead)}'10")
-                # let dead player swap
-                self.wait_for_response_starts_with(dead, ("s",), ("n",), 10)
-                p1_action = None
-                if 0 in dead:
-                    for i in range(len(self.p1_msg)):
-                        if self.p1_msg[i][0] == "s":
-                            p1_action = self.p1_msg[i]
-                    self.p1_msg.clear()
-
-                p2_action = None
-                if 1 in dead:
-                    for i in range(len(self.p2_msg)):
-                        if self.p2_msg[i][0] == "s":
-                            p2_action = self.p2_msg[i]
-                    self.p2_msg.clear()
-                actions = [p1_action, p2_action]
-
-                swaps = [None, None]
-                for i in range(2):
-                    if i in dead:
-                        action = actions[i]
-                        if action is not None and action[0] == "s":
-                            self.curr_cards[i] = int(action[1])
-                            swaps[i] = action
-                        else:
-                            alive = []
-                            for j in range(len(self.p1_hps)):
-                                if self.all_hps[i][j] > 0:
-                                    alive.append(j)
-                            choice = random.choice(alive)
-                            self.curr_cards[i] = choice
-                            swaps[i] = f"s{choice}"
-                
-                self.send_info_to_both_players(f"smm2{json.dumps(swaps)}")
-                self.wait_for_response("anicomp")
-            else:
-                print("No Players Dead")
 
             curr_cards_data = (self.teachemon_data[self.p1_cards[self.curr_cards[0]]-1], self.teachemon_data[self.p2_cards[self.curr_cards[1]]-1])
             # give 20 seconds to choose, tell users to pick a move
@@ -476,15 +436,38 @@ class BattleEnv:
             self.wait_for_response_starts_with((0, 1), ("m", "i", "s"), ("n",), 22)# 2 second buffer to receive messages
             # receive messages
             possible_moves = ["m", "i", "s"]
+
+            
             p1_action = None
-            if self.p1_msg[0][0] in possible_moves:
-                p1_action = self.p1_msg[0]
-            self.p1_msg.clear()
+            if 0 not in dead:
+                if self.p1_msg[0][0] in possible_moves:
+                    p1_action = self.p1_msg[0]
+                self.p1_msg.clear()
+            else:
+                if self.p1_msg[0][0] == "s":
+                    p1_action = self.p1_msg[0]
+                self.p1_msg.clear()
 
             p2_action = None
-            if self.p2_msg[0][0] in possible_moves:
-                p2_action = self.p2_msg[0]
-            self.p2_msg.clear()
+            if 1 not in dead:
+                if self.p2_msg[0][0] in possible_moves:
+                    p2_action = self.p2_msg[0]
+                self.p2_msg.clear()
+            else:
+                if self.p2_msg[0][0] == "s":
+                    p2_action = self.p2_msg[0]
+                self.p2_msg.clear()
+
+            if self.p1_msg[0] != "s" and self.p1_hps[self.curr_cards[[0]]] <= 0:
+                for i in range(4):
+                    if self.p1_hps[i] > 0:
+                        p1_action = f"s{i}"
+                        break
+            if self.p2_msg[0] != "s" and self.p2_hps[self.curr_cards[[1]]] <= 0:
+                for i in range(4):
+                    if self.p2_hps[i] > 0:
+                        p2_action = f"s{i}"
+                        break
 
             actions = (p1_action, p2_action)
             
@@ -574,11 +557,11 @@ class BattleEnv:
             action = actions[i]
             if action is not None:
                 action_type = action[0]
-                move_num = action[1]
+                move_num = int(action[1])
                 if action_type == "m":
-                    abilities[i] = int(move_num)
+                    abilities[i] = move_num
                 elif action_type == "i":
-                    items[i] = int(move_num)
+                    items[i] = move_num
                 elif action_type == "s":
                     hps = (self.p1_hps, self.p2_hps)
                     if hps[i][move_num] > 0:
