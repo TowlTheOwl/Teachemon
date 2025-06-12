@@ -134,6 +134,8 @@ def handle_server_connection(conn:socket.socket, running, messages, userdata):
                         elif requested_info == "password":
                             to_send += str(userdata[1])
                         elif requested_info == "ownedcards":
+                            to_send += str(userdata[2])
+                        elif requested_info == "selectedcards":
                             to_send += "x"+str(userdata[3])
                         elif requested_info == "coins":
                             to_send += str(userdata[4])

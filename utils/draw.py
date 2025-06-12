@@ -53,8 +53,10 @@ def draw_battle_menu(screen, logo, button_m, button_s, button_e):
     screen.blit(button_s, (100, 332))
     screen.blit(button_e, (100, 402))
 
-def draw_claim_menu(screen, logo, gacha, trade, exit):
+def draw_claim_menu(screen, logo, gacha, trade, exit, resized_dispenser, screen_bg):
     screen.fill("grey")
+    screen.blit(screen_bg, (0,0))
+    screen.blit(resized_dispenser, (400, 250))
     screen.blit(logo, (30, 50))
     screen.blit(gacha, (100, 262))
     screen.blit(trade, (100, 332))
@@ -126,8 +128,12 @@ def draw_trade_result(screen, font, success, exit):
         screen.blit(font.render("TRADE DENCLINED...", True, "Black"), (200, 200))
     screen.blit(exit, (785,555))
 
-def draw_singleplayer_menu(screen):
+def draw_singleplayer_menu(screen:pygame.SurfaceType, font, big_font):
     screen.fill("grey")
+    screen.blit(big_font.render("SINGLE PLAYER", True, "Black"), (150, 50))
+    screen.blit(font.render("EASY", True, "Black"), (150, 200))
+    screen.blit(font.render("MEDIUM", True, "Black"), (150, 350))
+    screen.blit(font.render("HARD", True, "Black"), (150, 500))
 
 def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank, teacher_info:dict, opp_username, small_font:pygame.font.Font, other_cards:tuple):
     if page == "00":
@@ -141,9 +147,9 @@ def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank
             t14 = font.render("Back".upper(), True, "White")
 
         elif page == "20":
-            t11 = font.render("Item 1".upper(), True, "White")
-            t12 = font.render("Item 2".upper(), True, "White")
-            t13 = font.render("Item 3".upper(), True, "White")
+            t11 = font.render("Attack Potion".upper(), True, "White")
+            t12 = font.render("Defense Potion".upper(), True, "White")
+            t13 = font.render("Energy Potion".upper(), True, "White")
             t14 = font.render("Back".upper(), True, "White")
             
         elif page == "30":
@@ -170,8 +176,8 @@ def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank
 #     if battle_page == "Main":
 #         screen.blit(battle_main, (0, 0))
 
-def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, data):
-    screen.fill("grey")
+def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, data, login_bg):
+    screen.blit(login_bg, (0,0))
     screen.blit(binder, (0, 0))
 
     x = 150
@@ -281,11 +287,118 @@ def draw_cut(screen, button_exit, font, big_font, animation_list, frame, vs_bg, 
 
     screen.blit(animation_list[frame], (0, -150))
 
-def draw_settings(screen, button_credits, button_exit):
+
+def draw_settings(screen, button_credits, button_volume, button_exit):
     screen.fill("grey")
     screen.blit(button_credits, (315,112))
-    screen.blit(button_exit, (398,182))
+    screen.blit(button_volume, (398, 182))
+    screen.blit(button_exit, (415,252))
 
+def draw_credits(screen, button_exit, font, image):
+    pygame.init()
+    screen.fill("grey")
+
+    credits = [
+        "",
+        "IN HONOR OF MR HONG...",
+        "",
+        "HOW DID THE DOG GET STRAIGHT AS",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "IT WAS THE TEACHERS PET!",
+        "",
+        "",
+        "",
+        "OUR TEAM",
+        "",
+        "",
+        "OUR CEO HENRY NOT HARRY YANG",
+        "DANTASTIC DANIEL CHOI",
+        "JUBILANT JESSICA NI",
+        "CHEERFUL CASSIDY TRAN",
+        "ESTHER CARL SAYS HI"
+
+    ]
+
+    credit_surfaces = []
+    for line in credits:
+        credit_surfaces.append(font.render(line, True, "white"))
+    content_height = image.get_height() + len(credit_surfaces) * 50
+    width, height = 1000, 600
+    y = height
+    x = width
+
+
+    speed = 1
+    clock = pygame.time.Clock()
+    running = True
+
+    while running:
+        screen.fill("black")
+
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                running=False
+
+        image_x = (width - image.get_width()) // 2
+        screen.blit(image, (image_x, y))
+
+        for i, surface in enumerate(credit_surfaces):
+            x = (width - surface.get_width()) // 2
+            screen.blit(surface, (x, y + image.get_height() + i * 50))
+        
+        y -= speed
+        if y + content_height < 0:
+            running = False
+
+        pygame.display.flip()
+        clock.tick(60)
+
+
+def draw_volume(screen, button_exit, pointer, font):
+    screen.fill("grey")
+    slider_x = 200
+    slider_y = 300
+    slider_width = 600
+    slider_height = 100
+    volume = 50  
+    target_volume = volume  
+
+    running = True
+    while running:
+        screen.fill("grey")
+        screen.blit(font.render("ADJUST VOLUME", True, "Black"), (260, 150))
+        screen.blit(button_exit, (785, 555))
+        screen.blit(pointer, (730, 555))
+
+        if abs(volume - target_volume) > 0.5:  
+            volume += (target_volume - volume) * 0.1  
+
+        pygame.mixer.music.set_volume(volume / 100)
+        pygame.draw.rect(screen, "black", (slider_x, slider_y, slider_width, slider_height))
+        filled_width = int((volume / 100) * slider_width)
+        pygame.draw.rect(screen, "yellow", (slider_x, slider_y, filled_width, slider_height))
+
+        for event in pygame.event.get():
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RIGHT:
+                    target_volume = min(target_volume + 5, 100) 
+                elif event.key == pygame.K_LEFT:
+                    target_volume = max(target_volume - 5, 0)  
+                elif event.key == pygame.K_RETURN:
+                    running = False
+
+        pygame.display.flip()
+    
+
+
+
+
+    
 def draw_choose_your_team(screen:pygame.Surface, button_exit, text_cyt, cyt_rect, button_go_text, button_go_bg, button_go_rect, selected_cards, font, card_images):
     screen.fill("grey")
     pygame.draw.rect(screen, (150, 150, 150), button_go_bg, border_radius=5)

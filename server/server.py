@@ -7,6 +7,7 @@ import json
 from player import Player
 import csv
 import random
+import os
 
 class Server:
     def __init__(self, IP, port):
@@ -19,7 +20,8 @@ class Server:
         print(f"Number of total cards: {self.total_cards}.")
 
         print("Retrieving Teachemon data.")
-        with open("data/TeachemonData - Teachemon.csv", 'r') as file:
+        file_path = os.path.join(os.path.dirname(__file__), '..', 'Data', 'TeachemonData - Teachemon.csv')
+        with open(file_path, 'r') as file:
             self.teachemon_data = []
             csvfile = csv.DictReader(file) # reads data file for teachemon
             for row in csvfile:
@@ -162,6 +164,17 @@ class Server:
                             else:
                                 print("USERNAME NOT FOUND WHEN SEARCHING FOR CARDS")
                     
+                    elif msg == "get coins":
+                        if user is None:
+                            print("NOT LOGGED IN BUT GET COINS CALLED????")
+                        else:
+                            coins = self.find_coins(user)
+                            if coins != "":
+                                c.send(f"sk{coins}".encode())
+                                print(f"sk{coins}")
+                            else:
+                                print("USERNAME NOT FOUND WHEN SEARCHING FOR COINS")
+                    
                     elif msg[0] == "x":
                         # it is a match message, relay onto server
                         player.queue.append(msg[1:])
@@ -190,7 +203,7 @@ class Server:
                     raise e
         
     def handle_match(self, p1, p2):
-        BattleHandler(self, p1, p2, self.teachemon_data)
+        BattleEnv(self, p1, p2, self.teachemon_data)
 
     def find_login(self, username: str, password: str="") -> int:
         """
@@ -229,6 +242,9 @@ class Server:
 
     def replace_line(self, file_name, line_num, text):
         lines = open(file_name, 'r').readlines()
+        print(f"Replacing line {line_num}")
+        print(f"\tPreviously {lines[line_num]}")
+        print(f"\tto {text}")
         lines[line_num] = text
         out = open(file_name, 'w')
         out.writelines(lines)
@@ -252,6 +268,20 @@ class Server:
                     return card
         return ""
 
+    def find_coins(self, username):
+        with open("data/data.txt", "r+") as file:
+            data = file.readlines()
+            for info in data:
+                parts = info.strip().split(",")
+                if len(parts) < 3:
+                    continue  # skip malformed or metadata lines
+                user, _, _ = parts[:3]
+                if user == username:
+                    if len(parts) == 3:
+                        return "50"
+                    return parts[3]
+        return ""
+
     def add_card(self, username:str, card_num:str):
         with open("data/data.txt", "r+") as file:
             data = file.readlines()
@@ -262,21 +292,18 @@ class Server:
                     print(f"Skipping malformed line: {data[index]}")
                     continue
 
-                user, pswd = parts[0], parts[1]
+                user, pswd, card = parts[0], parts[1], parts[2]
             
                 if len(parts) == 3:
-                    card = parts[2]
                     coins = "0"  #default value if coins are not set yet
                 else:
-                    card = "".join(parts[2:-1])
                     coins = parts[-1]
 
                 if user == username:
                     card_list = self.card_to_list(card)
                     if card_num not in card_list:
                         card_list.append(int(card_num))
-                    self.replace_line("data/data.txt", index, f"{user},{pswd},{self.list_to_card(card_list)}\n")
-                    print(f"Replaced Line {index} with {user},{pswd},{self.list_to_card(card_list)}")
+                    self.replace_line("data/data.txt", index, f"{user},{pswd},{self.list_to_card(card_list)},{coins}\n")
                     return
     
     def set_coins(self, username: str, new_amount: int):
@@ -293,6 +320,7 @@ class Server:
                 coins = parts[3] if len(parts) >= 4 else "0"
 
                 if user == username:
+                    coins = new_amount
                     self.replace_line("data/data.txt", index, f"{user},{pswd},{card},{coins}\n")
                     print(f"Set {username}'s coins to {new_amount}")
                     return
@@ -312,251 +340,6 @@ class Server:
                         return 0  #default if coins not present
         return 0
     
-
-class BattleHandler:
-    def __init__(self, server:Server, p1:Player, p2:Player, teachemon_data:list):
-        self.game_in_progress = True
-        self.teachemon_data = teachemon_data
-        self.server = server
-        self.p1 = p1
-        self.p2 = p2
-        self.c1 = p1.conn
-        self.c2 = p2.conn
-        self.p1_msg = p1.queue
-        self.p2_msg = p2.queue
-
-        self.c1.send("rownedcards".encode())
-        self.c2.send("rownedcards".encode())
-
-        while (len(self.p1_msg) == 0 or len(self.p2_msg) == 0):
-            pass
-        self.p1_cards = json.loads(self.p1_msg[0])
-        self.p2_cards = json.loads(self.p2_msg[0])
-        self.p1_hps = [100, 100, 100, 100]
-        self.p2_hps = [100, 100, 100, 100]
-        self.all_hps = (self.p1_hps, self.p2_hps)
-        self.p1_msg.clear()
-        self.p2_msg.clear()
-
-        print(f"Player 1 cards: {self.p1_cards}")
-        print(f"Player 2 cards: {self.p2_cards}")
-        self.curr_cards = [0, 0]
-
-
-        self.c1.send("smMATCH1".encode())
-        self.c2.send("smMATCH2".encode())
-
-        self.send_info_to_both_players(f"smu{p1.username}'{p2.username}'{self.p1_cards}'{self.p2_cards}'{self.p1_hps}'{self.p2_hps}")
-
-        threading.Thread(target=self.check_connected).start()
-        self.wait_for_response("CONNECTED")
-        time.sleep(3)
-
-
-
-        # game loop begins
-        while (self.game_in_progress and any(self.p1_hps) and any(self.p2_hps)):
-            # check if current teachemon is dead
-            dead = []
-            if self.p1_hps[self.curr_cards[0]] == 0:
-                # p1 playa ded
-                dead.append(0)
-            if self.p2_hps[self.curr_cards[1]] == 0:
-                dead.append(1)
-            if len(dead) != 0:
-                print("Player Dead")
-                self.send_info_to_both_players(f"smm1{json.dumps(dead)}'10")
-                # let dead player swap
-                self.wait_for_response_starts_with(dead, ("s",), ("n",), 10)
-                p1_action = None
-                if 0 in dead:
-                    for i in range(len(self.p1_msg)):
-                        if self.p1_msg[i][0] == "s":
-                            p1_action = self.p1_msg[i]
-                    self.p1_msg.clear()
-
-                p2_action = None
-                if 1 in dead:
-                    for i in range(len(self.p2_msg)):
-                        if self.p2_msg[i][0] == "s":
-                            p2_action = self.p2_msg[i]
-                    self.p2_msg.clear()
-                actions = [p1_action, p2_action]
-
-                swaps = [None, None]
-                for i in range(2):
-                    if i in dead:
-                        action = actions[i]
-                        if action is not None and action[0] == "s":
-                            self.curr_cards[i] = int(action[1])
-                            swaps[i] = action
-                        else:
-                            alive = []
-                            for j in range(len(self.p1_hps)):
-                                if self.all_hps[i][j] > 0:
-                                    alive.append(j)
-                            choice = random.choice(alive)
-                            self.curr_cards[i] = choice
-                            swaps[i] = f"s{choice}"
-                
-                self.send_info_to_both_players(f"smm2{json.dumps(swaps)}")
-                self.wait_for_response("anicomp")
-            else:
-                print("No Players Dead")
-
-            curr_cards_data = (self.teachemon_data[self.p1_cards[self.curr_cards[0]]-1], self.teachemon_data[self.p2_cards[self.curr_cards[1]]-1])
-            # give 20 seconds to choose, tell users to pick a move
-            self.send_info_to_both_players("smgmove10")
-            self.wait_for_response_starts_with((0, 1), ("m", "i", "s"), ("n",), 12)# 2 second buffer to receive messages
-            # receive messages
-            possible_moves = ["m", "i", "s"]
-            p1_action = None
-            if self.p1_msg[0][0] in possible_moves:
-                p1_action = self.p1_msg[0]
-            self.p1_msg.clear()
-
-            p2_action = None
-            if self.p2_msg[0][0] in possible_moves:
-                p2_action = self.p2_msg[0]
-            self.p2_msg.clear()
-
-            actions = (p1_action, p2_action)
-            # handle actions
-            """
-            m = Move
-            i = Item Use
-            s = Swap
-            """
-            abilities = [None, None]
-            items = [None, None]
-            first_to_animate = -1
-            for i in range(2):
-                action = actions[i]
-                if action is not None:
-                    action_type = action[0]
-                    move_num = action[1]
-                    if action_type == "m":
-                        abilities[i] = int(move_num)
-                    elif action_type == "i":
-                        items[i] = int(move_num)
-                    elif action_type == "s":
-                        self.curr_cards[i] = int(move_num)  # swap is immediate - swap before any abilities cast
-                        first_to_animate = i
-            
-            # handle user actions
-            # items are used immediately
-            ########BLAVKLJBLKJKDJBLBJDK########
-            
-            # cast abilities
-            first_to_cast = 0
-            num_cast = 0
-            if abilities[0] is not None and abilities[1] is not None:  # if both players cast
-                first_to_cast = 0
-                num_cast = 2
-                user1speed = int(curr_cards_data[0][f"Move {abilities[0]+1} Speed"])
-                user2speed = int(curr_cards_data[1][f"Move {abilities[1]+1} Speed"])
-                if user1speed > user2speed:
-                    first_to_cast = 1
-                elif user1speed == user2speed:
-                    # coin toss
-                    first_to_cast = random.randint(0,1)
-                
-            elif abilities[1] is not None: # only user 2 casted
-                first_to_cast = 1
-                num_cast = 1
-            elif abilities[0] is not None: # only user 1 casted
-                first_to_cast = 0
-                num_cast = 1
-            if first_to_animate == -1:
-                first_to_animate = first_to_cast
-            
-            i = 0
-            print(f"Number of Casts: {num_cast}")
-            print(abilities)
-
-            print(f"P1 Queue: {self.p1_msg}")
-            print(f"P2 Queue: {self.p2_msg}")
-            while num_cast > 0:
-                target_idx = (first_to_cast + i) % 2
-                opp_idx = (first_to_cast + i + 1) % 2
-                if self.all_hps[target_idx][self.curr_cards[target_idx]] != 0:
-                    self.cast_ability(curr_cards_data[target_idx], int(abilities[target_idx]), self.curr_cards[opp_idx], self.all_hps[opp_idx])
-                i += 1
-                num_cast -= 1
-
-            self.send_info_to_both_players(f"smm0{p1_action}'{p2_action}'{first_to_animate}'{self.p1_hps}'{self.p2_hps}") # send moves
-            """
-            user action 1, user action 2, first to cast, hp1, hp2
-            """
-            # wait for users to finish animation
-            completed = self.wait_for_response("anicomp", 30) # client sends "xanicomp" (ANImation COMPlete)
-            if not all(completed):
-                if not completed[0]:
-                    self.c2.send("smDC".encode())
-                elif not completed[1]:
-                    self.c1.send("smDC".encode())
-        
-        winner = -1
-        # declare winner
-        if (any(self.p1_hps)):
-            winner = 0
-        else:
-            winner = 1
-        self.send_info_to_both_players(f"smd{winner}")
-    
-    def cast_ability(self, card_data:dict, ability_idx:int, opp_curr_card: int, opp_hps:list):
-        # cast the selected ability, calculate damage
-        damage = int(card_data[f"Move {ability_idx + 1} Damage"])
-        opp_hps[opp_curr_card] -= damage
-        if opp_hps[opp_curr_card] < 0:
-            opp_hps[opp_curr_card] = 0
-        
-    def send_info_to_both_players(self, message:str):
-        self.c1.send(message.encode())
-        self.c2.send(message.encode())
-        print(f"Sent message to both players: {message}")
-    
-    def wait_for_response(self, response_key:str, max_time:int=10, delete:bool=True):
-        responses = [0, 0]
-        start_time = time.time()
-        while not all(responses) and time.time() - start_time < max_time:
-            if response_key in self.p1_msg:
-                responses[0] = 1
-                if delete:
-                    self.p1_msg.remove(response_key)
-            if response_key in self.p2_msg:
-                responses[1] = 1
-                if delete:
-                    self.p2_msg.remove(response_key)
-        
-        return responses
-        
-    
-    def wait_for_response_starts_with(self, targets:list, response_key:tuple, catch_key:tuple, max_time:int):
-        responses = [1, 1]
-        start_time = time.time()
-        for target in targets:
-            responses[target] = 0
-        while not all(responses) and time.time() - start_time < max_time:
-            if 0 in targets:
-                for msg in self.p1_msg:
-                    if msg[0] in response_key or msg[0] in catch_key:
-                        responses[0] = 1
-            if 1 in targets:
-                for msg in self.p2_msg:
-                    if msg[0] in response_key or msg[0] in catch_key:
-                        responses[1] = 1
-            time.sleep(1)
-            
-
-    def check_connected(self):
-        while self.server.run and self.game_in_progress:
-            if (self.c1 not in self.server.logged_in_clients.values()) or ("L" in self.p1_msg):
-                self.c2.send("smDC".encode())
-                self.game_in_progress = False
-            if (self.c2 not in self.server.logged_in_clients.values()) or ("L" in self.p2_msg):
-                self.c1.send("smDC".encode())
-                self.game_in_progress = False
 
 class BattleQueue:
     def __init__(self, server:Server):
@@ -590,6 +373,294 @@ class BattleQueue:
                 return True
         return False
 
+
+
+class BattleEnv:
+    def __init__(self, server:Server, p1:Player, p2:Player, teachemon_data:list):
+        self.game_in_progress = True
+        self.teachemon_data = teachemon_data
+        self.server = server
+        self.p1 = p1
+        self.p2 = p2
+        self.c1 = p1.conn
+        self.c2 = p2.conn
+        self.p1_msg = p1.queue
+        self.p2_msg = p2.queue
+
+        self.c1.send("rselectedcards".encode())
+        self.c2.send("rselectedcards".encode())
+
+        while (len(self.p1_msg) == 0 or len(self.p2_msg) == 0):
+            pass
+        self.p1_cards = json.loads(self.p1_msg[0])
+        self.p2_cards = json.loads(self.p2_msg[0])
+        self.p1_hps = [100, 100, 100, 100]
+        self.p2_hps = [100, 100, 100, 100]
+        self.p1_effects = [0, 0]
+        self.p2_effects = [0, 0]
+        self.all_effects = (self.p1_effects, self.p2_effects)
+        self.all_hps = (self.p1_hps, self.p2_hps)
+        self.energies = [[10, 10, 10, 10], [10, 10, 10, 10]]
+        self.p1_msg.clear()
+        self.p2_msg.clear()
+
+        print(f"Player 1 cards: {self.p1_cards}")
+        print(f"Player 2 cards: {self.p2_cards}")
+        self.curr_cards = [0, 0]
+
+
+        self.c1.send("smMATCH1".encode())
+        self.c2.send("smMATCH2".encode())
+
+        self.send_info_to_both_players(f"smu{p1.username}'{p2.username}'{self.p1_cards}'{self.p2_cards}'{self.p1_hps}'{self.p2_hps}")
+
+        threading.Thread(target=self.check_connected).start()
+        self.wait_for_response("CONNECTED")
+        time.sleep(3)
+
+
+
+        # game loop begins
+        while (self.game_in_progress and any(self.p1_hps) and any(self.p2_hps)):
+            # check if current teachemon is dead
+            dead = []
+            if self.p1_hps[self.curr_cards[0]] == 0:
+                # p1 playa ded
+                dead.append(0)
+            if self.p2_hps[self.curr_cards[1]] == 0:
+                dead.append(1)
+
+            curr_cards_data = (self.teachemon_data[self.p1_cards[self.curr_cards[0]]-1], self.teachemon_data[self.p2_cards[self.curr_cards[1]]-1])
+            # give 20 seconds to choose, tell users to pick a move
+            self.send_info_to_both_players("smgmove20")
+            self.wait_for_response_starts_with((0, 1), ("m", "i", "s"), ("n",), 22)# 2 second buffer to receive messages
+            # receive messages
+            possible_moves = ["m", "i", "s"]
+
+            
+            p1_action = None
+            if 0 not in dead:
+                if self.p1_msg[0][0] in possible_moves:
+                    p1_action = self.p1_msg[0]
+                self.p1_msg.clear()
+            else:
+                if self.p1_msg[0][0] == "s":
+                    p1_action = self.p1_msg[0]
+                self.p1_msg.clear()
+
+            p2_action = None
+            if 1 not in dead:
+                if self.p2_msg[0][0] in possible_moves:
+                    p2_action = self.p2_msg[0]
+                self.p2_msg.clear()
+            else:
+                if self.p2_msg[0][0] == "s":
+                    p2_action = self.p2_msg[0]
+                self.p2_msg.clear()
+
+            if self.p1_msg[0] != "s" and self.p1_hps[self.curr_cards[[0]]] <= 0:
+                for i in range(4):
+                    if self.p1_hps[i] > 0:
+                        p1_action = f"s{i}"
+                        break
+            if self.p2_msg[0] != "s" and self.p2_hps[self.curr_cards[[1]]] <= 0:
+                for i in range(4):
+                    if self.p2_hps[i] > 0:
+                        p2_action = f"s{i}"
+                        break
+
+            actions = (p1_action, p2_action)
+            
+            # carry out actions
+            first_to_animate = self.step(actions, curr_cards_data)
+
+            self.send_info_to_both_players(f"smm0{p1_action}'{p2_action}'{first_to_animate}'{self.p1_hps}'{self.p2_hps}") # send moves and results back to players
+            """
+            user action 1, user action 2, first to animate, hp1, hp2
+            """
+            # wait for users to finish animation
+            completed = self.wait_for_response("anicomp", 30) # client sends "xanicomp" (ANImation COMPlete)
+
+            # the turn is over, update effects
+            self.p1_effects[0] = max(0, self.p1_effects[0]-1)
+            self.p2_effects[0] = max(0, self.p2_effects[0]-1)
+            self.p1_effects[1] = 0
+            self.p2_effects[1] = 0
+            for i in range(len(self.energies)):
+                target_energies = self.energies[i]
+                for j in range(len(target_energies)):
+                    target_energies[j] = min(10, target_energies[j]+1)
+
+            if not all(completed):
+                if not completed[0]:
+                    self.c2.send("smDC".encode())
+                elif not completed[1]:
+                    self.c1.send("smDC".encode())
+        
+        winner = -1
+        # declare winner
+        if (any(self.p1_hps)):
+            winner = 0
+        else:
+            winner = 1
+        self.send_info_to_both_players(f"smd{winner}")
+    
+    def cast_ability(self, player_idx:int, card_data:dict, ability_idx:int, opp_curr_card: int, opp_hps:list):
+        # cast the selected ability, calculate damage
+        opp_idx = (player_idx+1)%2
+        damage = int(card_data[f"Move {ability_idx + 1} Damage"])
+        if self.all_effects[player_idx][0] > 0:     # check for player attack potion effect
+            damage *= 1.5
+        
+        if self.all_effects[opp_idx][1] > 0:    # check for opponent defense potion effect
+            damage = max(damage-30, 0)
+        
+        self.energies[player_idx][self.curr_cards[player_idx]] -= int(card_data[f"Move {ability_idx + 1} Cost"])
+        opp_hps[opp_curr_card] -= damage
+        if opp_hps[opp_curr_card] < 0:
+            opp_hps[opp_curr_card] = 0
+        
+    def send_info_to_both_players(self, message:str):
+        self.c1.send(message.encode())
+        self.c2.send(message.encode())
+        print(f"Sent message to both players: {message}")
+    
+    def wait_for_response(self, response_key:str, max_time:int=10, delete:bool=True):
+        responses = [0, 0]
+        start_time = time.time()
+        while not all(responses) and time.time() - start_time < max_time:
+            if response_key in self.p1_msg:
+                responses[0] = 1
+                if delete:
+                    self.p1_msg.remove(response_key)
+            if response_key in self.p2_msg:
+                responses[1] = 1
+                if delete:
+                    self.p2_msg.remove(response_key)
+        
+        return responses
+        
+    def step(self, actions:list, curr_cards_data):
+        # handle actions
+        """
+        m = Move
+            Based on the cards
+        i = Item Use
+            
+        s = Swap
+            Can swap to other cards that are not dead
+        """
+        abilities = [None, None]
+        items = [None, None]
+        first_to_animate = -1
+        for i in range(2):
+            action = actions[i]
+            if action is not None:
+                action_type = action[0]
+                move_num = int(action[1])
+                if action_type == "m":
+                    abilities[i] = move_num
+                elif action_type == "i":
+                    items[i] = move_num
+                elif action_type == "s":
+                    hps = (self.p1_hps, self.p2_hps)
+                    if hps[i][move_num] > 0:
+                        self.curr_cards[i] = int(move_num)  # swap is immediate - swap before any abilities cast
+                    first_to_animate = i
+        
+        # handle user actions
+        # items are used immediately
+        """
+        0:    Attack Potion: Multiply attack damage of the current teachemon by 1.5x for next three turns 
+
+        1:    Defense Potion: Gives a shield to the current pokemon 30HP (does not stack)
+
+        2:    Energy Potion: Current Teachemon gains 5 Energy 
+        """
+        for i in range(2):
+            if items[i] is not None:
+                if items[i] == 0: # attack potion
+                    self.all_effects[i][0] = 3
+                elif items[i] == 1: # defense potion
+                    self.all_effects[i][1] = 1
+                elif items[i] == 2: # energy potion
+                    self.energies[i][self.curr_cards[i]] = min(self.energies[i][self.curr_cards[i]]+5, 10)
+                if first_to_animate == -1:
+                    first_to_animate = i
+
+        # cast abilities
+        first_to_cast = 0
+        num_cast = 0
+        if abilities[0] is not None and abilities[1] is not None:  # if both players cast
+            first_to_cast = 0
+            num_cast = 2
+            user1speed = int(curr_cards_data[0][f"Move {abilities[0]+1} Speed"])
+            user2speed = int(curr_cards_data[1][f"Move {abilities[1]+1} Speed"])
+            if user1speed > user2speed:
+                first_to_cast = 1
+            elif user1speed == user2speed:
+                # coin toss
+                first_to_cast = random.randint(0,1)
+            
+        elif abilities[1] is not None: # only user 2 casted
+            first_to_cast = 1
+            num_cast = 1
+        elif abilities[0] is not None: # only user 1 casted
+            first_to_cast = 0
+            num_cast = 1
+        if first_to_animate == -1:
+            first_to_animate = first_to_cast
+        
+        i = 0
+        # print(f"Number of Casts: {num_cast}")
+        # print(abilities)
+
+        # print(f"P1 Queue: {self.p1_msg}")
+        # print(f"P2 Queue: {self.p2_msg}")
+        
+        # process abilities
+
+        while num_cast > 0:
+            target_idx = (first_to_cast + i) % 2
+            opp_idx = (first_to_cast + i + 1) % 2
+            if self.all_hps[target_idx][self.curr_cards[target_idx]] != 0:
+                self.cast_ability(target_idx, curr_cards_data[target_idx], int(abilities[target_idx]), self.curr_cards[opp_idx], self.all_hps[opp_idx])
+            i += 1
+            num_cast -= 1
+
+
+        return first_to_animate
+    
+    def wait_for_response_starts_with(self, targets:list, response_key:tuple, catch_key:tuple, max_time:int):
+        responses = [1, 1]
+        start_time = time.time()
+        for target in targets:
+            responses[target] = 0
+        while not all(responses) and time.time() - start_time < max_time:
+            if 0 in targets:
+                for msg in self.p1_msg:
+                    if msg[0] in response_key or msg[0] in catch_key:
+                        responses[0] = 1
+            if 1 in targets:
+                for msg in self.p2_msg:
+                    if msg[0] in response_key or msg[0] in catch_key:
+                        responses[1] = 1
+            time.sleep(1)
+            
+
+    def check_connected(self):
+        while self.server.run and self.game_in_progress:
+            if (self.c1 not in self.server.logged_in_clients.values()) or ("L" in self.p1_msg):
+                self.c2.send("smDC".encode())
+                self.game_in_progress = False
+            if (self.c2 not in self.server.logged_in_clients.values()) or ("L" in self.p2_msg):
+                self.c1.send("smDC".encode())
+                self.game_in_progress = False
+
+
+
+
+
 if __name__ == "__main__":
     # Server's IPv4 address, port
     serverIP = "localhost"
@@ -598,3 +669,4 @@ if __name__ == "__main__":
     serverObj = Server(serverIP, port)
     input()
     serverObj.close()
+
