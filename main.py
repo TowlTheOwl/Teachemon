@@ -15,7 +15,7 @@ import csv
 from AI.battleEnv import BattleGymEnv
 
 # Connect to server's IPv4 address
-server = "localhost"
+server = "192.168.1.2"
 # Random open port
 port = 5555
 
@@ -1261,7 +1261,7 @@ while running[0]:
                     else:
                         game_status = "move"
                     timer_on = True
-                    timer = Timer(int(server_messages[3][5:]), screen, running, base_font, (center_x, 250))
+                    timer = Timer(int(server_messages[3][5:]), screen, running, base_font, (50, 50))
                     waiting = False
             elif game_message[0] == "m":
                 parsed_msg = game_message[2:].split("'")
@@ -1287,7 +1287,7 @@ while running[0]:
                     if player_num in dead_players:
                         battle_page = "30"
                     timer_on = True
-                    timer = Timer(int(parsed_msg[1]), screen, running, base_font, (center_x, 250))
+                    timer = Timer(int(parsed_msg[1]), screen, running, base_font, (30, 30))
                 elif game_message[1] == "2":
                     first_to_cast = 0
                     actions = json.loads(parsed_msg[0])
@@ -1350,6 +1350,7 @@ while running[0]:
                 opp_effects_display = small_font.render(f"EFFECTS {opp_effect[0]} {opp_effect[1]}", True, (0, 0, 0))
                 screen.blit(self_effects_display, self_effects_display.get_rect(center=(center_x-250, center_y+50)))
                 screen.blit(opp_effects_display, opp_effects_display.get_rect(center=(center_x+300, center_y+50)))
+                must_swap = False
 
                 if battle_page[0] == "1" and pointer_pos < 4:
                     curr_card_data = teachemon_data[selected_cards[curr_cards[player_num]]-1]
