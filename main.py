@@ -1,6 +1,7 @@
 #Import and Initialize PyGame and math
 import json
 import pygame
+from sb3_contrib import MaskablePPO
 pygame.init()
 import math
 import socket
@@ -11,6 +12,7 @@ from utils.draw import *
 import threading
 import numpy as np
 import csv
+from AI.battleEnv import BattleGymEnv
 
 # Connect to server's IPv4 address
 server = "localhost"
@@ -66,8 +68,8 @@ login_bg = pygame.transform.scale(login, (ScreenWidth, ScreenHeight))
 screen_bg = pygame.transform.scale(main_screen_bg, (ScreenWidth, ScreenHeight))
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
-dispenser = pygame.image.load("Images/draft dispense.png")
-resized_dispenser = pygame.transform.scale(dispenser, (600, 600))
+dispenser = pygame.image.load("Images/singleDispenser.png")
+resized_dispenser = pygame.transform.scale(dispenser, (500, 300))
 sprite_sheet = pygame.image.load("Images/dispense sheet.png").convert_alpha()
 cardanim_sheet = pygame.image.load("Images/cardanim.png").convert_alpha()
 lever = pygame.image.load("Images/test6.png")
@@ -102,7 +104,6 @@ pointer_on = True
 pointer_x = 55
 pointer_y = 257
 left_page = 1
-coins = 0
 circle_x = 0
 circle_y = 0
 circle_angle = 0
@@ -115,6 +116,17 @@ highlight_x = 95
 highlight_y = 73
 highlight_num = 0
 
+#sfx
+select_sfx = pygame.mixer.Sound("SFx/select.wav")
+dispense_sfx = pygame.mixer.Sound("SFX/dispense.wav")
+page_turn_sfx = pygame.mixer.Sound("SFX/paperSlide.wav")
+card_zoom_sfx = pygame.mixer.Sound("SFx/pageTurn.wav")
+no_coins_sfx = pygame.mixer.Sound("SFX/noCoins.wav")
+new_card_sfx = pygame.mixer.Sound("SFX/new.wav")
+owned_card_sfx = pygame.mixer.Sound("SFX/owned.wav")
+coins_sfx = pygame.mixer.Sound("SFX/coins.mp3")
+
+
 #animaiton for card reveal
 alpha = 0
 fade_started = False
@@ -124,6 +136,11 @@ WHITE = (225, 225, 225)
 card_started = False
 card_anim = 0
 max_cardanim = 30
+#not enough coins display
+no_coins = ""
+no_coins_timer = 0
+no_coins_duration = 2000
+owned = False
 
 #sprite animation for card dispenser
 back = (0,0,0)
@@ -233,8 +250,10 @@ running = [True]
 
 server_messages = [None, None, None, None, None, None, None] # check utils
 
+coins = 50
 selected_cards = [None, None, None, None]
-userdata = [username, password, [], selected_cards] # username, password, owned cards, selected cards
+userdata = [username, password, [], selected_cards, coins] # username, password, owned cards, selected cards
+coins = userdata[4]
 cards_owned = userdata[2]
 must_swap = False
 opponent_username = None
@@ -259,7 +278,9 @@ while running[0]:
             running[0] = False
         if event.type == pygame.KEYDOWN: 
             key_pressed = True
-            keys = pygame.key.get_pressed()
+            keys = pygame.key.get_pressed()           
+
+            
 
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
@@ -279,9 +300,6 @@ while running[0]:
                 elif pointer_pos < 7:
                     pointer_pos += 1
             elif page == "Trade":
-<<<<<<< Updated upstream
-                pointer_pos = (pointer_pos%2) + 1
-=======
                 if pointer_pos < 3:
                     pointer_pos += 1
             elif page == "Choose Trade Card":
@@ -297,8 +315,10 @@ while running[0]:
             elif page == "View Trade":
                 if pointer_pos < 2:
                     pointer_pos += 1
-
->>>>>>> Stashed changes
+                    
+            elif page == "SinglePlayerMenu":
+                if pointer_pos < 3:
+                    pointer_pos += 1
             else:
                 pointer_pos += 1
 
@@ -320,9 +340,6 @@ while running[0]:
                 elif pointer_pos > 5:
                     pointer_pos -= 1
             elif page == "Trade":
-<<<<<<< Updated upstream
-                pointer_pos = (pointer_pos%2) + 1
-=======
                 if pointer_pos > 1:
                     pointer_pos -= 1
             elif page == "View Trade":
@@ -337,14 +354,14 @@ while running[0]:
             elif page == "Choose Trade Card":
                 if pointer_pos > 1:
                     pointer_on = False
-                    pointer_pos -= 1                    
->>>>>>> Stashed changes
+                    pointer_pos -= 1
             else:
                 if pointer_pos > 1:
                     pointer_pos -= 1
 
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+            pygame.mixer.Sound.play(select_sfx)
             keep_pointer = False
 
             if page == "Start":
@@ -375,9 +392,47 @@ while running[0]:
                         display_box(screen, "AT LEAST 4 CARDS NEEDED", base_font, 1)
                         page = "Battle_Menu"
                 elif pointer_pos == 2:
-                    page = "SBattle"
+                    page = "SinglePlayerMenu"
                 elif pointer_pos == 3:
                     page = "Menu"
+            elif page == "SinglePlayerMenu":
+                bot_mode = pointer_pos-1
+                page = "SBattle"
+                env = BattleGymEnv()
+                model_dirs = ("AI/easy.zip", "AI/medium.zip", "AI/hard.zip")
+                enemy_model = MaskablePPO.load(model_dirs[bot_mode], env=env)
+                bot_names = ("EASY BOT", "MEDIUM BOT", "HARD BOT")
+                bot_name = bot_names[bot_mode]
+
+                game_state = 0
+                user_action = None
+                obs, _ = env.reset()
+
+                player_cards, bot_cards = env.get_cards()
+                player_obs = env._get_observation(0)
+                curr_card = -1
+                for i in range(4):
+                    if (player_obs[i]):
+                        curr_card = i
+                curr_energy = [int(i*10) for i in player_obs[8:12]]
+                curr_hp = [int(i*100) for i in player_obs[4:8]]
+                
+                other_cards = player_cards.copy()
+                other_cards.pop(curr_card)
+                other_cards = tuple(other_cards)
+
+                bot_obs = env._get_observation(1)
+                bot_curr_card = -1
+                for i in range(4):
+                    if (bot_obs[i]):
+                        bot_curr_card = i
+                bot_curr_energy = [int(i*10) for i in bot_obs[8:12]]
+                bot_curr_hp = [int(i*100) for i in bot_obs[4:8]]
+
+                selected_move = None
+                done = False
+
+
             elif page == "Claim":
                 if pointer_pos == 1:
                     page = "Gacha"
@@ -404,26 +459,50 @@ while running[0]:
                 elif pointer_pos == 7:
                     page = "Battle_Menu"
             elif page == "SBattle":
-                if sbattle_page == "00":
-                    if pointer_pos == 1:
-                        sbattle_page = "10"
-                    elif pointer_pos == 2:
-                        sbattle_page = "20"
-                    elif pointer_pos == 3:
-                        sbattle_page = "30"
-                    elif pointer_pos == 4:
-                        page = "Battle_Menu"
-                        pointer_pos = 1
-                elif sbattle_page in ["10", "20", "30"]:
-                    if pointer_pos == 1:
-                        sbattle_page = sbattle_page[0] + "1"
-                    if pointer_pos == 2:
-                        sbattle_page = sbattle_page[0] + "2"
-                    if pointer_pos == 3:
-                        sbattle_page = sbattle_page[0] + "3"
-                    if pointer_pos == 4:
-                        pointer_pos = 1
-                        sbattle_page = "00"
+                if pointer_on:
+                    if sbattle_page == "00":
+                        if not must_swap:
+                            if pointer_pos == 1:
+                                sbattle_page = "10"
+                            elif pointer_pos == 2:
+                                sbattle_page = "20"
+                            elif pointer_pos == 3:
+                                sbattle_page = "30"
+                            elif pointer_pos == 4:
+                                sbattle_page = "40"
+                                pointer_pos = 2
+                        else:
+                            if pointer_pos == 3:
+                                sbattle_page = "30"
+                            elif pointer_pos == 4:
+                                sbattle_page = "40"
+                                pointer_pos = 2
+                    elif sbattle_page in ("10", "20"):
+                        if pointer_pos < 4:
+                            if sbattle_page == "10":
+                                # check whether the player has enough energy to use the move
+                                if curr_energy[curr_card] > int(teachemon_data[player_cards[curr_card]-1][f"Move {pointer_pos} Cost"]):
+                                    selected_move = sbattle_page[0] + str(pointer_pos)
+                                else:
+                                    display_box(screen, "NOT ENOUGH ENERGY", base_font, 1)
+                            else:
+                                selected_move = sbattle_page[0] + str(pointer_pos)
+                        elif pointer_pos == 4:
+                            pointer_pos = 1
+                            sbattle_page = "00"
+                    elif sbattle_page == "30":
+                        if pointer_pos != 4:
+                            card_idx = player_cards.index(other_cards[pointer_pos-1])
+                            if card_idx != curr_card and curr_hp[card_idx] > 0:
+                                selected_move = "3" + str(card_idx+1)
+                        else:
+                            pointer_pos = 1
+                            sbattle_page = "00"
+                    elif sbattle_page == "40":
+                        if pointer_pos == 1:
+                            page = "Menu"
+                        elif pointer_pos == 2:
+                            sbattle_page = "00"
             elif page == "Battle":
                 if pointer_on:
                     if battle_page == "00":
@@ -475,7 +554,7 @@ while running[0]:
                     page = "Menu"
             elif page == "Settings":
                 if pointer_pos == 1:
-                    draw_credits(screen, button_exit, fontx1, hong)
+                    print("credits")
                 elif pointer_pos == 2:
                     page = "Volume"
                     draw_volume(screen, button_exit, pointer, base_font)
@@ -489,6 +568,7 @@ while running[0]:
                 
                 if card_zoom < 3:
                     card_zoom += 0.2
+                    pygame.mixer.Sound.play(card_zoom_sfx)
                 if card_zoom >= 3:
                     card_zoom = 1
                 
@@ -509,10 +589,6 @@ while running[0]:
                     page = "Start"
                     username_box.reset()
                     password_box.reset()
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
             if not keep_pointer:
                 pointer_pos = 1
         
@@ -534,6 +610,7 @@ while running[0]:
                     elif left_page + 1 > 2:
                         left_page -= 2
                         highlight_num = 11 + highlight_num
+                        pygame.mixer.Sound.play(page_turn_sfx)
                     if card_zoom >= 3:
                         card_zoom = 1
 
@@ -557,6 +634,7 @@ while running[0]:
                     elif left_page + 1 < 8:
                         left_page += 2
                         highlight_num = highlight_num % 9 - 2
+                        pygame.mixer.Sound.play(page_turn_sfx)
                     if card_zoom >= 3:
                         card_zoom = 1
 
@@ -567,28 +645,39 @@ while running[0]:
                     if pointer_hover<len(userdata[2])-1: pointer_hover+=1
 
 
-        if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha": 
+        if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha":
             if lever_rect.collidepoint(event.pos) and not card_visible:
-                gacha = random.randint(1, 59)
+                if coins >= 10:
+                    pygame.mixer.Sound.play(coins_sfx)
+                    pygame.mixer.Sound.play(dispense_sfx)
+                    coins -= 10
+                    userdata[4] = coins
+                    connection.send(f"k{userdata[4]}".encode())
+                    gacha = random.randint(1, 59)
                 
-                if gacha not in cards_owned:
-                    cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
-                    connection.send(f"a{gacha}".encode())
+                    if gacha not in cards_owned:
+                        cards_owned.insert(np.searchsorted(cards_owned, gacha), gacha)
+                        connection.send(f"a{gacha}".encode())
+                        owned = True
 
-                current_card = card_images[gacha]
-                card_rect = current_card.get_rect(center=(ScreenWidth // 2, ScreenHeight // 2))
-                card_visible = True
-                #fade effect
-                alpha = 0
-                fading_in = True
-                #card display animation
-                dispalay_started = False
-                cardanim_frame = 0
-                #update animation
-                if action == 1:
-                    action -= 1
-                action += 1
-                dispenser_frame = 0
+                    current_card = card_images[gacha]
+                    card_rect = current_card.get_rect(center=(ScreenWidth // 2, ScreenHeight // 2))
+                    card_visible = True
+                    #fade effect
+                    alpha = 0
+                    fading_in = True
+                    #card display animation
+                    dispalay_started = False
+                    cardanim_frame = 0
+                    #update animation
+                    if action == 1:
+                        action -= 1
+                    action += 1
+                    dispenser_frame = 0
+                else:
+                    pygame.mixer.Sound.play(no_coins_sfx)
+                    no_coins = "NOT ENOUGH COINS"
+                    no_coins_timer = pygame.time.get_ticks()    
             elif card_visible and card_rect and card_rect.collidepoint(event.pos):
                 #hide card if clicked
                 display_started = False
@@ -681,26 +770,362 @@ while running[0]:
         pointer_y = 257 + 70 * (pointer_pos - 1)
         draw_battle_menu(screen, logo, button_multiplayer, button_singleplayer, button_exit)
 
-    elif page == "SingleplayerMenu":
-        draw_singleplayer_menu(screen)
+    elif page == "SinglePlayerMenu":
+        pointer_on = True
+        pointer_x = 20
+        
+        pointer_y = 150 * pointer_pos + 45
+        draw_singleplayer_menu(screen, base_font, big_font)
 
     elif page == "SBattle":
-        page = "Menu"
-        # """
-        # pointer pos
-        # [1 2
-        #  3 4]
-        # """
-        # if pointer_pos % 2 == 1:
-        #     pointer_x = 30
-        # else:
-        #     pointer_x = 525
-        
-        # if pointer_pos <= 2:
-        #     pointer_y = 435
-        # else:
-        #     pointer_y = 530
-        # draw_battle(screen, sbattle_page, player_placeholder, enemy_placeholder, fontx3, battle_00, battle_main, pteach1)
+        if not done:
+            
+            """
+            game states
+            0: waiting for user input
+            1: calculating bot action
+            2: animating
+            """
+            if game_state == 0:
+                if pointer_pos % 2 == 1:
+                    pointer_x = 30
+                else:
+                    pointer_x = 525
+                
+                if pointer_pos <= 2:
+                    pointer_y = 435
+                else:
+                    pointer_y = 530
+
+                # wait for user action
+                draw_battle(
+                    screen, 
+                    sbattle_page, 
+                    fontx3, 
+                    battle_00, 
+                    battle_main, 
+                    teachemon_data[player_cards[curr_card]-1], 
+                    bot_name,
+                    small_font, 
+                    other_cards
+                )
+
+                screen.blit(player_placeholder, (140,135))
+                screen.blit(enemy_placeholder, (700,100))
+                # Teachemon Data for Current Player: teachemon_data[selected_cards[curr_cards[player_num]]-1] 
+                # Teachemon Data for Opponent Player: teachemon_data[opponent_cards[curr_cards[opp_num]]-1]
+                # -> Get Total HP
+                curr_card_data = teachemon_data[player_cards[curr_card]-1]
+                # p_total_hp, o_total_hp = int(teachemon_data[player_cards[curr_card]-1]["HP"]), int(teachemon_data[bot_cards[bot_curr_card]-1]["HP"])
+                p_total_hp = o_total_hp = 100
+                # Current HP: self_hps[curr_cards[player_num]], opp_hps[curr_cards[opp_num]]
+                p_curr_hp, o_curr_hp = int(curr_hp[curr_card]), int(bot_curr_hp[bot_curr_card])
+                
+                # DRAW
+                pygame.draw.rect(screen, (0, 0, 0), (155, 372, 200, 30)) # player hp bar background
+                pygame.draw.rect(screen, (100, 255, 100), (160, 377, int(190*(p_curr_hp/p_total_hp)), 20)) # player hp bar red thing
+
+                pygame.draw.rect(screen, (0, 0, 0), (690, 290, 200, 30)) # opponent hp bar background
+                pygame.draw.rect(screen, (255, 100, 100), (695, 295, int(190*(o_curr_hp/o_total_hp)), 20)) # opponent hp bar red thing
+
+                opp_card = base_font.render(str(bot_cards[bot_curr_card]), True, (0, 0, 0))
+                self_card = base_font.render(str(player_cards[curr_card]), True, (0, 0, 0))
+                opp_card_hp = base_font.render(str(bot_curr_hp[bot_curr_card]), True, (200, 50, 50))
+                self_card_hp = base_font.render(str(curr_hp[curr_card]), True, (50, 200, 50))
+                screen.blit(opp_card, (750, 120))
+                screen.blit(self_card, (200, 200))
+                screen.blit(opp_card_hp, (750, 170))
+                screen.blit(self_card_hp, (200, 250))
+
+                if sbattle_page[0] == "1" and pointer_pos < 4:
+                    # display info about the move
+                    # Damage, Cost, Speed
+                    text_damage = base_font.render("DAMAGE", True, (0, 0, 0))
+                    damage_value_text = small_font.render(str(curr_card_data[f"Move {pointer_pos} Damage"]), True, (0, 0, 0))
+                    text_cost = base_font.render("COST", True, (0, 0, 0))
+                    cost_value_text = small_font.render(str(curr_card_data[f"Move {pointer_pos} Cost"]), True, (0, 0, 0))
+                    text_speed = base_font.render("SPEED", True, (0, 0, 0))
+                    speed_value_text = small_font.render(str(curr_card_data[f"Move {pointer_pos} Speed"]), True, (0, 0, 0))
+                    pygame.draw.rect(screen, (200, 200, 255), (360, 150, 300, 260)) # screen size: 1000 x 600
+                    screen.blit(text_damage, (400, 170))
+                    screen.blit(damage_value_text, (420, 210))
+                    screen.blit(text_cost, (400, 250))
+                    screen.blit(cost_value_text, (420, 290))
+                    screen.blit(text_speed, (400, 340))
+                    screen.blit(speed_value_text, (420, 380))
+
+                game_announcement = base_font.render("CHOOSE YOUR MOVE", True, (245, 66, 66))
+                game_announcement_rect = game_announcement.get_rect(center=(center_x, 50))
+                screen.blit(game_announcement, game_announcement_rect)
+                energy_display = small_font.render(f"ENERGY {curr_energy[curr_card]}", True, (0, 0, 0))
+                screen.blit(energy_display, energy_display.get_rect(center=(center_x, center_y-200)))
+                # self_effects_display = small_font.render(f"EFFECTS {self_effect[0]} {self_effect[1]}", True, (0, 0, 0))
+                # opp_effects_display = small_font.render(f"EFFECTS {opp_effect[0]} {opp_effect[1]}", True, (0, 0, 0))
+                # screen.blit(self_effects_display, self_effects_display.get_rect(center=(center_x-250, center_y+50)))
+                # screen.blit(opp_effects_display, opp_effects_display.get_rect(center=(center_x+300, center_y+50)))
+
+
+                if (selected_move is not None and selected_move[1] != "0"):
+                    game_state = 1
+            elif game_state == 1:
+                # calculate user action and animation
+                mask = env.get_action_mask(1)
+                bot_action, _ = enemy_model.predict(env._get_observation(1), action_masks=mask)
+                
+                user_action = (int(selected_move[0])-1) * 3 + int(selected_move[1]) - 1
+                final_actions = (user_action, bot_action)
+                obs, reward, done, truncated, info= env.step(final_actions)
+
+                # update observation
+                player_obs = env._get_observation(0)
+                curr_card = -1
+                for i in range(4):
+                    if (player_obs[i]):
+                        curr_card = i
+                curr_energy = [int(i*10) for i in player_obs[8:12]]
+                curr_hp = [int(i*100) for i in player_obs[4:8]]
+
+                other_cards = player_cards.copy()
+                other_cards.pop(curr_card)
+                other_cards = tuple(other_cards)
+
+                bot_obs = env._get_observation(1)
+                bot_curr_card = -1
+                for i in range(4):
+                    if (bot_obs[i]):
+                        bot_curr_card = i
+                bot_curr_energy = [int(i*10) for i in bot_obs[8:12]]
+                bot_curr_hp = [int(i*100) for i in bot_obs[4:8]]
+
+                
+                if curr_hp[curr_card] <= 0:
+                    must_swap = True
+                else:
+                    must_swap = False
+
+                sbattle_page = "00"
+                selected_move = None
+                game_state = 2  # animate
+                animating = 0
+                animation_idx = 0
+            else: # animation
+                if animation_idx < 2:
+                    if animating == 0:
+                        if animation_idx == len(env.cast_order):
+                            animation_idx += 1
+                            continue
+                        casting = env.cast_order[animation_idx]
+                        if casting == 0:
+                            source_name = userdata[0]
+                        else:
+                            source_name = bot_name
+                        
+                        if final_actions[casting] < 3: # 0 - 2: ability
+                            action_name = f"m{final_actions[casting]}"
+                        elif final_actions[casting] < 6: # 3, 4, 5: items
+                            action_name = f"i{final_actions[casting]-3}"
+                        else: # swap
+                            action_name = f"s{final_actions[casting]-6}"
+
+                        print(f"ANIMATING: {action_name} by {source_name}\nMOVE NUM: {animation_idx}\nSOURCE NUM: {casting}")
+                        # display_box(screen, f"{source_name} {action_name}".upper(), base_font, 2)
+                        animating = 1
+                        player_img_pos = (140, 135)
+                        opp_img_pos = (700, 100)
+                        animation_bg_pos = (-1000, -600)
+                        bounce_out = True
+                        is_self = False
+                        frame = 0
+                        if action_name[0] == "m":
+                            card_num = player_cards[curr_card] if casting == 0 else bot_cards[bot_curr_card]
+                            data = teachemon_data[card_num-1]
+                            move_info = (source_name.upper(), data["Name"].upper(), data[f"Move {int(action_name[1]) + 1} Name"].upper(), data[f"Move {int(action_name[1]) + 1} Damage"].upper())
+                            scene = 0
+                            print_delay = 1
+                        elif action_name[0] == "i":
+                            card_num = player_cards[curr_card] if casting == 0 else bot_cards[bot_curr_card]
+                            data = teachemon_data[card_num-1]
+                            potion_names = ("Attack Potion", "Defense Potion", "Energy Potion")
+                            item_info = (source_name.upper(), data["Name"].upper(), potion_names[int(action_name[1])].upper())
+                            scene = 0
+                            print_delay = 1
+                        if casting == 0:
+                            is_self = True
+                    
+                    elif animating == 1:
+                        if action_name[0] == "s":
+                            """
+                            image = 240x240
+                            initial pos:
+                            - player: (140, 135)
+                            - opponent: (700, 100)
+                            """
+                            if bounce_out:
+                                if is_self:
+                                    player_img_pos = (player_img_pos[0] - 10, player_img_pos[1])
+                                    if player_img_pos[0] <= -240:
+                                        bounce_out = False
+                                else:
+                                    opp_img_pos = (opp_img_pos[0] + 10, opp_img_pos[1])
+                                    if opp_img_pos[0] >= 1000:
+                                        bounce_out = False
+                            else:
+                                if is_self:
+                                    player_img_pos = (player_img_pos[0] + 10, player_img_pos[1])
+                                    if player_img_pos[0] >= 140:
+                                        animating = 2
+                                else:
+                                    opp_img_pos = (opp_img_pos[0] - 10, opp_img_pos[1])
+                                    if opp_img_pos[0] <= 700:
+                                        animating = 2
+                            
+
+                            draw_battle(
+                                screen, 
+                                sbattle_page, 
+                                fontx3, 
+                                battle_00, 
+                                battle_main, 
+                                teachemon_data[player_cards[curr_card]-1], 
+                                bot_name,
+                                small_font, 
+                                other_cards
+                            )                            
+                            screen.blit(player_placeholder, player_img_pos)
+                            screen.blit(enemy_placeholder, opp_img_pos)
+                        elif action_name[0] == "m":
+                            screen.blit(animation_bg, animation_bg_pos)
+                            if animation_bg_pos[0] < 0:
+                                animation_bg_pos = (animation_bg_pos[0] + 50, animation_bg_pos[1] + 30)
+                            else:
+                                """
+                                Background fully animated -> Need to display:
+                                - Player Name
+                                - Teachemon Name
+                                - Ability Name
+                                - Damage
+                                """
+                                if scene >= 0:
+                                    if scene == 0:
+                                        if (frame//print_delay <= len(move_info[0])):
+                                            name = base_font.render(move_info[0][:frame//print_delay], True, (0, 0, 0))
+                                        else:
+                                            name = base_font.render(move_info[0], True, (0, 0, 0))
+                                            if frame//print_delay - len(move_info[0]) == 2:
+                                                scene += 1
+                                                frame = 0
+                                    else:
+                                        name = base_font.render(move_info[0], True, (0, 0, 0))
+                                    screen.blit(name, (100, 100))
+                                if scene >= 1:
+                                    if scene == 1:
+                                        if (frame//print_delay <= len(move_info[1])):
+                                            tname = base_font.render(move_info[1][:frame//print_delay], True, (0, 0, 0))
+                                        else:
+                                            tname = base_font.render(move_info[1], True, (0, 0, 0))
+                                            if frame//print_delay - len(move_info[1]) == 2:
+                                                scene += 1
+                                                frame = 0
+                                    else:
+                                        tname = base_font.render(move_info[1], True, (0, 0, 0))
+                                    screen.blit(tname, (250, 200))
+                                if scene >= 2:
+                                    if scene == 2:
+                                        if (frame//print_delay <= len(move_info[2])):
+                                            ability = base_font.render(move_info[2][:frame//print_delay], True, (0, 0, 0))
+                                        else:
+                                            ability = base_font.render(move_info[2], True, (0, 0, 0))
+                                            if frame//print_delay - len(move_info[2]) == 2:
+                                                scene += 1
+                                                frame = 0
+                                    else:
+                                        ability = base_font.render(move_info[2], True, (0, 0, 0))
+                                    screen.blit(ability, (400, 300))
+                                if scene >= 3:
+                                    if scene == 3:
+                                        if (frame//print_delay <= len(move_info[3])):
+                                            damage = base_font.render(move_info[3][:frame//print_delay], True, (0, 0, 0))
+                                        else:
+                                            damage = base_font.render(move_info[3], True, (0, 0, 0))
+                                            if frame//print_delay - len(move_info[3]) == 2:
+                                                scene += 1
+                                                frame = 0
+                                    else:
+                                        damage = base_font.render(move_info[3], True, (0, 0, 0))
+                                    screen.blit(damage, (550, 400))
+                                if scene > 3:
+                                    if frame >= 24*2:
+                                        animating = 2
+                                frame += 1
+                        elif action_name[0] == "i":
+                            screen.blit(animation_bg, animation_bg_pos)
+                            if animation_bg_pos[0] < 0:
+                                animation_bg_pos = (animation_bg_pos[0] + 50, animation_bg_pos[1] + 30)
+                            else:
+                                """
+                                Background fully animated -> Need to display:
+                                - Player Name
+                                - Teachemon Name
+                                - Item Name
+                                """
+                                if scene >= 0:
+                                    if scene == 0:
+                                        if (frame//print_delay <= len(item_info[0])):
+                                            name = base_font.render(item_info[0][:frame//print_delay], True, (0, 0, 0))
+                                        else:
+                                            name = base_font.render(item_info[0], True, (0, 0, 0))
+                                            if frame//print_delay - len(item_info[0]) == 2:
+                                                scene += 1
+                                                frame = 0
+                                    else:
+                                        name = base_font.render(item_info[0], True, (0, 0, 0))
+                                    screen.blit(name, (100, 100))
+                                if scene >= 1:
+                                    if scene == 1:
+                                        if (frame//print_delay <= len(item_info[1])):
+                                            tname = base_font.render(item_info[1][:frame//print_delay], True, (0, 0, 0))
+                                        else:
+                                            tname = base_font.render(item_info[1], True, (0, 0, 0))
+                                            if frame//print_delay - len(item_info[1]) == 2:
+                                                scene += 1
+                                                frame = 0
+                                    else:
+                                        tname = base_font.render(item_info[1], True, (0, 0, 0))
+                                    screen.blit(tname, (250, 200))
+                                if scene >= 2:
+                                    if scene == 2:
+                                        if (frame//print_delay <= len(item_info[2])):
+                                            item = base_font.render(item_info[2][:frame//print_delay], True, (0, 0, 0))
+                                        else:
+                                            item = base_font.render(item_info[2], True, (0, 0, 0))
+                                            if frame//print_delay - len(item_info[2]) == 2:
+                                                scene += 1
+                                                frame = 0
+                                    else:
+                                        item = base_font.render(item_info[2], True, (0, 0, 0))
+                                    screen.blit(item, (400, 300))
+                                if scene > 2:
+                                    if frame >= 24*2:
+                                        animating = 2
+                                frame += 1
+
+                                
+                        else:
+                            animating = 2
+
+                    elif animating == 2:
+                        animating = 0
+                        animation_idx+=1
+                else:
+                    game_state = 0
+        else:
+            # find out whether the player won, display, add coins if won
+            if not any([hp>0 for hp in curr_hp]):
+                display_box(screen, "YOU WON", big_font, 3)
+            else:
+                display_box(screen, "YOU LOST", big_font, 3)
+            
+            page = "Menu"
     
     elif page == "Choose Card":
         pointer_on = True
@@ -785,6 +1210,9 @@ while running[0]:
                     all_cards[(player_num+1)%2] = opponent_cards
                     must_swap = False
                     actions = [None, None]
+                    energy = [10, 10, 10, 10]
+                    self_effect = [0, 0]
+                    opp_effect = [0, 0]
                     waiting = False
                     page = "Cut"
                     print("CUT SCENE\n")
@@ -814,7 +1242,11 @@ while running[0]:
 
             elif game_message[0] == "g":
                 if game_message[1:5] == "move":
-                    game_status = "move"
+                    if self_hps[curr_cards[player_num]] <= 0:
+                        game_status = "dead"
+                        battle_page = "30"
+                    else:
+                        game_status = "move"
                     timer_on = True
                     timer = Timer(int(server_messages[3][5:]), screen, running, base_font, (center_x, 250))
                     waiting = False
@@ -873,7 +1305,7 @@ while running[0]:
             # Teachemon Data for Current Player: teachemon_data[selected_cards[curr_cards[player_num]]-1] 
             # Teachemon Data for Opponent Player: teachemon_data[opponent_cards[curr_cards[opp_num]]-1]
             # -> Get Total HP
-            p_total_hp, o_total_hp = int(teachemon_data[selected_cards[curr_cards[player_num]]-1]["HP"]), int(teachemon_data[opponent_cards[curr_cards[opp_num]]-1]["HP"])
+            p_total_hp = o_total_hp = 100
             # Current HP: self_hps[curr_cards[player_num]], opp_hps[curr_cards[opp_num]]
             p_curr_hp, o_curr_hp = int(self_hps[curr_cards[player_num]]), int(opp_hps[curr_cards[opp_num]])
             
@@ -898,7 +1330,32 @@ while running[0]:
                 game_announcement_rect = game_announcement.get_rect(center=(center_x, 50))
                 screen.blit(game_announcement, game_announcement_rect)
                 selected_move_display = small_font.render(f"SELECTED {selected_move}".upper(), True, (0, 0, 0))
-                screen.blit(selected_move_display, selected_move_display.get_rect(center=(center_x, center_y+50)))
+                screen.blit(selected_move_display, selected_move_display.get_rect(center=(center_x, center_y+70)))
+                energy_display = small_font.render(f"ENERGY {energy[curr_cards[player_num]]}", True, (0, 0, 0))
+                screen.blit(energy_display, energy_display.get_rect(center=(center_x, center_y-200)))
+                self_effects_display = small_font.render(f"EFFECTS {self_effect[0]} {self_effect[1]}", True, (0, 0, 0))
+                opp_effects_display = small_font.render(f"EFFECTS {opp_effect[0]} {opp_effect[1]}", True, (0, 0, 0))
+                screen.blit(self_effects_display, self_effects_display.get_rect(center=(center_x-250, center_y+50)))
+                screen.blit(opp_effects_display, opp_effects_display.get_rect(center=(center_x+300, center_y+50)))
+
+                if battle_page[0] == "1" and pointer_pos < 4:
+                    curr_card_data = teachemon_data[selected_cards[curr_cards[player_num]]-1]
+                    # display info about the move
+                    # Damage, Cost, Speed
+                    text_damage = base_font.render("DAMAGE", True, (0, 0, 0))
+                    damage_value_text = small_font.render(str(curr_card_data[f"Move {pointer_pos} Damage"]), True, (0, 0, 0))
+                    text_cost = base_font.render("COST", True, (0, 0, 0))
+                    cost_value_text = small_font.render(str(curr_card_data[f"Move {pointer_pos} Cost"]), True, (0, 0, 0))
+                    text_speed = base_font.render("SPEED", True, (0, 0, 0))
+                    speed_value_text = small_font.render(str(curr_card_data[f"Move {pointer_pos} Speed"]), True, (0, 0, 0))
+                    pygame.draw.rect(screen, (200, 200, 255), (360, 150, 300, 260)) # screen size: 1000 x 600
+                    screen.blit(text_damage, (400, 170))
+                    screen.blit(damage_value_text, (420, 210))
+                    screen.blit(text_cost, (400, 250))
+                    screen.blit(cost_value_text, (420, 290))
+                    screen.blit(text_speed, (400, 340))
+                    screen.blit(speed_value_text, (420, 380))
+
                 if timer_on:
                     timer.draw()
                     if timer.time == 0:
@@ -910,7 +1367,37 @@ while running[0]:
                             sent_move = "n0"
                         connection.send(f"x{sent_move}".encode())
                         selected_move = None
+                        game_status = "waiting"
             
+            elif game_status == "dead":                
+                game_announcement = base_font.render("SWAP YOUR TEACHEMON", True, (245, 66, 66))
+                game_announcement_rect = game_announcement.get_rect(center=(center_x, 200))
+                screen.blit(game_announcement, game_announcement_rect)
+                selected_move_display = small_font.render(f"SELECTED {selected_move}".upper(), True, (0, 0, 0))
+                screen.blit(selected_move_display, selected_move_display.get_rect(center=(center_x, center_y+70)))
+                energy_display = small_font.render(f"ENERGY {energy[curr_cards[player_num]]}", True, (0, 0, 0))
+                screen.blit(energy_display, energy_display.get_rect(center=(center_x, center_y-200)))
+                self_effects_display = small_font.render(f"EFFECTS {self_effect[0]} {self_effect[1]}", True, (0, 0, 0))
+                opp_effects_display = small_font.render(f"EFFECTS {opp_effect[0]} {opp_effect[1]}", True, (0, 0, 0))
+                screen.blit(self_effects_display, self_effects_display.get_rect(center=(center_x-250, center_y+50)))
+                screen.blit(opp_effects_display, opp_effects_display.get_rect(center=(center_x+300, center_y+50)))
+                must_swap = True
+
+                if timer_on:
+                    timer.draw()
+                    if timer.time == 0:
+                        timer_on = False
+                        # send selected move to the server
+                        if selected_move is not None:
+                            sent_move = ("m", "i", "s")[int(selected_move[0])-1] + str(int(selected_move[1])-1)
+                            if sent_move[0] == "m":
+                                energy[curr_cards[player_num]] -= int(teachemon_data[selected_cards[curr_cards[player_num]]-1][f"Move {selected_move[1]} Cost"])
+                        else:
+                            sent_move = "n0"
+                        connection.send(f"x{sent_move}".encode())
+                        selected_move = None
+                        game_status = "waiting"
+                
             elif game_status == "animate":
                 if move_num < 2:
                     source = turn[move_num]
@@ -1053,33 +1540,6 @@ while running[0]:
                 if first_frame:
                     first_fame = False
             
-            elif game_status == "dead":
-                if timer_on:
-                    timer.draw()
-                    if timer.time == 0:
-                        timer_on = False
-                if player_num in dead_players:
-                    game_announcement = base_font.render("SWAP YOUR TEACHEMON", True, (245, 66, 66))
-                    game_announcement_rect = game_announcement.get_rect(center=(center_x, 200))
-                    screen.blit(game_announcement, game_announcement_rect)
-                    must_swap = True
-                    if timer.time == 0:
-                        # send selected move to the server
-                        if selected_move is not None:
-                            sent_move = ("n", "n", "s")[int(selected_move[0])-1] + str(int(selected_move[1])-1)
-                        else:
-                            sent_move = "n0"
-                        connection.send(f"x{sent_move}".encode())
-                        selected_move = None
-                else:
-                    game_announcement = base_font.render("WAITING FOR OPPONENT", True, (245, 66, 66))
-                    game_announcement_rect = game_announcement.get_rect(center=(center_x, 200))
-                    screen.blit(game_announcement, game_announcement_rect)
-                    waiting = True
-                
-                if timer.time == 0:
-                    game_status = "waiting"
-            
             elif game_status == "waiting":
                 display_box(screen, "WAITING", base_font)
 
@@ -1096,7 +1556,7 @@ while running[0]:
             pointer_on = False
         if card_zoom > 1 and card_zoom <= 3:
             card_zoom += 0.2
-        draw_binder(screen, left_page, left_page + 1, resized_binder, fontx1, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data)
+        draw_binder(screen, left_page, left_page + 1, resized_binder, fontx1, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data, login_bg)
         
 
         
@@ -1117,7 +1577,7 @@ while running[0]:
         
         pointer_x = 55
         pointer_y = 257 + 70 * (pointer_pos - 1)        
-        draw_claim_menu(screen, logo, big_font.render("GACHA", True, (0, 0, 0)), big_font.render("TRADE", True, (0, 0, 0)), big_font.render("EXIT", True, (0, 0, 0)))
+        draw_claim_menu(screen, logo, big_font.render("GACHA", True, (0, 0, 0)), big_font.render("TRADE", True, (0, 0, 0)), big_font.render("EXIT", True, (0, 0, 0)), resized_dispenser, screen_bg)
     
     elif page == "Gacha":
         pointer_on = True
@@ -1126,7 +1586,7 @@ while running[0]:
         pointer_y = 550
         draw_claim(screen, button_exit, font, coins, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin,
                    alpha, card_started, card_anim, max_cardanim, fade_started,
-                   cardanim_list, cardanim_frame, display_started)
+                   cardanim_list, cardanim_frame, display_started, no_coins, no_coins_duration, no_coins_timer, owned, big_font)
         current_time = pygame.time.get_ticks()
 
         if card_visible:
@@ -1137,6 +1597,10 @@ while running[0]:
                     fading_in = False 
                     card_started = True
                     card_anim = 0
+                    if gacha not in cards_owned:
+                        pygame.mixer.Sound.play(new_card_sfx)
+                    else:
+                        pygame.mixer.Sound.play(owned_card_sfx)
         if display_started:
             if current_time - last_update >= cardanim_cooldown:
                 cardanim_frame += 1

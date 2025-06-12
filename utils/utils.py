@@ -134,7 +134,11 @@ def handle_server_connection(conn:socket.socket, running, messages, userdata):
                         elif requested_info == "password":
                             to_send += str(userdata[1])
                         elif requested_info == "ownedcards":
+                            to_send += str(userdata[2])
+                        elif requested_info == "selectedcards":
                             to_send += "x"+str(userdata[3])
+                        elif requested_info == "coins":
+                            to_send += str(userdata[4])
                         else:
                             raise Exception(f"Unknown info requested by the server: {requested_info}")
                     conn.send(to_send.encode())
@@ -165,6 +169,9 @@ def handle_server_connection(conn:socket.socket, running, messages, userdata):
                         # server sent card info
                         message = info[1:]
                         userdata[2][:] = [int(e) for e in message.split(",")]
+                    elif info[0] == "k":
+                        userdata[4] = int(info[1:])
+
                 else:
                     raise Exception(f"unexpected message, received {msg}")
         except Exception as e:

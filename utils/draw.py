@@ -53,31 +53,87 @@ def draw_battle_menu(screen, logo, button_m, button_s, button_e):
     screen.blit(button_s, (100, 332))
     screen.blit(button_e, (100, 402))
 
-def draw_claim_menu(screen, logo, gacha, trade, exit):
+def draw_claim_menu(screen, logo, gacha, trade, exit, resized_dispenser, screen_bg):
     screen.fill("grey")
+    screen.blit(screen_bg, (0,0))
+    screen.blit(resized_dispenser, (400, 250))
     screen.blit(logo, (30, 50))
     screen.blit(gacha, (100, 262))
     screen.blit(trade, (100, 332))
     screen.blit(exit, (100, 402))
 
-def draw_trade(screen, cards_owned, cards, exit, font, highlight, pointer):
+
+def draw_trade(screen, cards_owned, cards, exit, font, highlight, available_players):
     screen.fill("grey")
-    screen.blit(font.render("YOUR TRADE:", True, "Black"), (50, 100))
+    # screen.blit(font.render("YOUR TRADE:", True, "Black"), (50, 100))
 
     if len(cards_owned) == 0: 
         screen.blit(font.render("NO CARDS", True, "Black"), (50, 200))
-    count = 0
-    for i in range(len(cards_owned)):
-            screen.blit(cards.get(i), (40+count*190, 200))
-            count += 1
-    screen.blit(exit, (785,555))
-    screen.blit(pygame.transform.scale(highlight, (165, 225)), (40, 200))
-    screen.blit(pointer, (100, 430))
 
-        
+    else:
+        screen.blit(font.render("AVAILABLE PLAYERS", True, "Black"), (100, 100))
+        # available_players is a placeholder
+        for i in range(3):
+            screen.blit(font.render(available_players[i], True, "Black"), (300, 200 + 100 * i))
 
-def draw_singleplayer_menu(screen):
+        screen.blit(exit, (785,555))
+
+def draw_trade_loading(screen, font, player):
     screen.fill("grey")
+    screen.blit(font.render("WAITING FOR " + player + "...", True, "Black"), (50, 250))
+
+def draw_trade_wheel(screen, cards, pointer, font:pygame.font.Font, big_font, button_go_text, button_go_bg, button_go_rect, card_images):
+    screen.fill("grey")
+    len_cards = len(cards)
+    cards_to_draw = [cards[pointer+i] if i>=-pointer and i+pointer<len_cards else None for i in (-2, -1, 0, 1, 2)]
+    card = cards_to_draw[2]
+    
+    screen.blit(big_font.render("CHOOSE YOUR CARD", True, "Black"), (140, 100))
+    # placeholder timer
+    screen.blit(font.render("TIMER", True, "Black"), (800, 25))
+    pygame.draw.rect(screen, (150, 150, 150), button_go_bg, border_radius=5)
+    screen.blit(button_go_text, button_go_rect)
+
+    screen.blit(card_images[card], (460, 270))
+
+    y = 320
+    card_size = (55, 75)
+
+    # draw left cards
+    for i in range(2):
+        card = cards_to_draw[i]
+        if card is not None:
+            screen.blit(card_images[card], (200+(i*110), y))
+    # draw right cards
+    for i in range(2):
+        card = cards_to_draw[i+3]
+        if card is not None:
+            screen.blit(card_images[card], (610+(i*110), y))
+
+def draw_view_trade(screen, big_font, small_font, trade_card, receive_card):
+    screen.fill("grey")
+    screen.blit(big_font.render("VIEW TRADE", True, "Black"), (250, 50))
+    screen.blit(small_font.render("TRADE", True, "Black"), (70, 160))
+    screen.blit(small_font.render("RECEIVE", True, "Black"), (670, 160))
+    screen.blit(pygame.transform.scale(trade_card, (180, 246)), (80, 250))
+    screen.blit(pygame.transform.scale(receive_card, (180, 246)), (710, 250))
+    screen.blit(small_font.render("ACCEPT", True, "Black"), (390, 300))
+    screen.blit(small_font.render("DECLINE", True, "Black"), (390, 430))
+
+def draw_trade_result(screen, font, success, exit):
+    screen.fill("grey")
+    if success:
+        screen.blit(font.render("TRADE SUCCESSFUL", True, "Black"), (150, 200))
+    else:
+        screen.blit(font.render("TRADE DENCLINED...", True, "Black"), (200, 200))
+    screen.blit(exit, (785,555))
+
+def draw_singleplayer_menu(screen:pygame.SurfaceType, font, big_font):
+    screen.fill("grey")
+    screen.blit(big_font.render("SINGLE PLAYER", True, "Black"), (150, 50))
+    screen.blit(font.render("EASY", True, "Black"), (150, 200))
+    screen.blit(font.render("MEDIUM", True, "Black"), (150, 350))
+    screen.blit(font.render("HARD", True, "Black"), (150, 500))
 
 def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank, teacher_info:dict, opp_username, small_font:pygame.font.Font, other_cards:tuple):
     if page == "00":
@@ -91,9 +147,9 @@ def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank
             t14 = font.render("Back".upper(), True, "White")
 
         elif page == "20":
-            t11 = font.render("Item 1".upper(), True, "White")
-            t12 = font.render("Item 2".upper(), True, "White")
-            t13 = font.render("Item 3".upper(), True, "White")
+            t11 = font.render("Attack Potion".upper(), True, "White")
+            t12 = font.render("Defense Potion".upper(), True, "White")
+            t13 = font.render("Energy Potion".upper(), True, "White")
             t14 = font.render("Back".upper(), True, "White")
             
         elif page == "30":
@@ -120,8 +176,8 @@ def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank
 #     if battle_page == "Main":
 #         screen.blit(battle_main, (0, 0))
 
-def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, data):
-    screen.fill("grey")
+def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, data, login_bg):
+    screen.blit(login_bg, (0,0))
     screen.blit(binder, (0, 0))
 
     x = 150
@@ -170,14 +226,20 @@ def draw_binder(screen, left, right, binder, font, card_images, cards_owned, car
 
 def draw_claim(screen, button_exit, font, coins, animation_list, frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin, 
                alpha, card_started, card_anim, max_cardanim, fade_started, 
-               cardanim_list, cardanim_frame, display_started):
+               cardanim_list, cardanim_frame, display_started, no_coins, no_coins_duration, no_coins_timer, owned, big_font:pygame.font.Font):
+    owned_msg = "CARD ALREADY OWNED"
     screen.blit(screen_bg, (0,0))
     screen.blit(button_exit, (785,555))
     screen.blit(animation_list[action][frame], (250,50))
-    screen.blit(font.render(str(coins), True, (0, 0, 0)), (25, 5))
-    screen.blit(resized_coin, (40, 5))
+    screen.blit(big_font.render(str(coins), True, (0, 0, 0)), (30, 30))
+    screen.blit(resized_coin, (90, 5))
     fade_surface = pygame.Surface((screen.get_width(), screen.get_height()), pygame.SRCALPHA)
 
+    #not enough coins warning
+    if no_coins and pygame.time.get_ticks() - no_coins_timer < no_coins_duration:
+        warning_surf = big_font.render(no_coins, True, (255,0,0))
+        warning_rect = warning_surf.get_rect(center=(screen.get_width() // 2, screen.get_height() - 80))
+        screen.blit(warning_surf, warning_rect)
     #faded overlay
     if card_visible and current_card:
         fade_surface.fill((255, 255, 255, alpha)) 
@@ -194,19 +256,37 @@ def draw_claim(screen, button_exit, font, coins, animation_list, frame, action, 
         new_rect = new_card.get_rect(center=card_rect.center)
         card_rect = new_rect
         screen.blit(new_card, new_rect)
+        #if card is already owned
+        if not owned:
+            owned_surf = big_font.render(owned_msg, True, (255,0,0))
+            owned_rect = owned_surf.get_rect(center=(screen.get_width() // 2, screen.get_height() - 80))
+            screen.blit(owned_surf, owned_rect)      
+        elif owned:
+            not_owned = "NEW"
+            not_owned_surf = big_font.render(not_owned, True, (255,0,0))
+            not_owned_rect = not_owned_surf.get_rect(center=(screen.get_width() // 2, screen.get_height() - 80))
+            screen.blit(not_owned_surf, not_owned_rect) 
        
 
-def draw_cut(screen, button_exit, font, animation_list, frame, vs_bg, main_bg, username, opponent_username):
+def draw_cut(screen, button_exit, font, big_font, animation_list, frame, vs_bg, main_bg, username, opponent_username, cut_to):
     if frame <= 16:
         screen.blit(pygame.transform.scale(main_bg, (1000, 600)), (0, 0))
     else:
-        screen.blit(pygame.transform.scale(main_bg, (1000, 600)), (0, 0))
-        screen.blit(font.render(username.upper(), True, "Black"), (150, 300))
-        screen.blit(font.render(opponent_username.upper(), True, "Black"), (725, 300))
-        screen.blit(font.render("VS", True, "Black"), (500, 300))
-        screen.blit(pygame.transform.scale(vs_bg, (1270, 720)), (0, -50))
-    # screen.blit(button_exit, (785,555))
+        if cut_to == 1: # cut to battle
+            screen.blit(pygame.transform.scale(main_bg, (1000, 600)), (0, 0))
+            screen.blit(font.render(username.upper(), True, "Black"), (150, 300))
+            screen.blit(font.render(opponent_username.upper(), True, "Black"), (725, 300))
+            screen.blit(font.render("VS", True, "Black"), (500, 300))
+            screen.blit(pygame.transform.scale(vs_bg, (1270, 720)), (0, -50))
+        elif cut_to == 2: # cut to choose your trade card
+            screen.fill("grey")
+            screen.blit(big_font.render("CHOOSE YOUR CARD", True, "Black"), (140, 100))
+        elif cut_to == 3: # cut to view trade
+            screen.fill("grey")
+            screen.blit(big_font.render("VIEW TRADE", True, "Black"), (250, 50))
+
     screen.blit(animation_list[frame], (0, -150))
+
 
 def draw_settings(screen, button_credits, button_volume, button_exit):
     screen.fill("grey")
@@ -344,6 +424,7 @@ def draw_card_wheel(screen, cards, selected_cards, pointer, font:pygame.font.Fon
     y = 352
     card_size = (55, 75)
     
+
     # draw left cards
     for i in range(2):
         card = cards_to_draw[i]
