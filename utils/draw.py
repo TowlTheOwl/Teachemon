@@ -53,8 +53,10 @@ def draw_battle_menu(screen, logo, button_m, button_s, button_e):
     screen.blit(button_s, (100, 332))
     screen.blit(button_e, (100, 402))
 
-def draw_claim_menu(screen, logo, gacha, trade, exit):
+def draw_claim_menu(screen, logo, gacha, trade, exit, resized_dispenser, screen_bg):
     screen.fill("grey")
+    screen.blit(screen_bg, (0,0))
+    screen.blit(resized_dispenser, (400, 250))
     screen.blit(logo, (30, 50))
     screen.blit(gacha, (100, 262))
     screen.blit(trade, (100, 332))
@@ -170,8 +172,8 @@ def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank
 #     if battle_page == "Main":
 #         screen.blit(battle_main, (0, 0))
 
-def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, data):
-    screen.fill("grey")
+def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, data, login_bg):
+    screen.blit(login_bg, (0,0))
     screen.blit(binder, (0, 0))
 
     x = 150
@@ -281,8 +283,8 @@ def draw_cut(screen, button_exit, font, big_font, animation_list, frame, vs_bg, 
 
     screen.blit(animation_list[frame], (0, -150))
 
-def draw_settings(screen, button_credits, button_exit):
-    screen.fill("grey")
+def draw_settings(screen, button_credits, button_exit, login_bg):
+    screen.blit(login_bg, (0,0))
     screen.blit(button_credits, (315,112))
     screen.blit(button_exit, (398,182))
 
