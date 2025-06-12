@@ -433,42 +433,44 @@ class BattleEnv:
             curr_cards_data = (self.teachemon_data[self.p1_cards[self.curr_cards[0]]-1], self.teachemon_data[self.p2_cards[self.curr_cards[1]]-1])
             # give 20 seconds to choose, tell users to pick a move
             self.send_info_to_both_players("smgmove20")
-            self.wait_for_response_starts_with((0, 1), ("m", "i", "s"), ("n",), 22)# 2 second buffer to receive messages
+            self.wait_for_response_starts_with((0, 1), ("m", "i", "s"), ("n",), 23)# 3 second buffer to receive messages
             # receive messages
             possible_moves = ["m", "i", "s"]
 
             
             p1_action = None
-            if 0 not in dead:
-                if self.p1_msg[0][0] in possible_moves:
-                    p1_action = self.p1_msg[0]
-                self.p1_msg.clear()
-            else:
-                if self.p1_msg[0][0] == "s":
-                    p1_action = self.p1_msg[0]
-                self.p1_msg.clear()
-
+            if len(self.p1_msg) != 0 and len(self.p1_msg[0]) != 0:
+                if 0 not in dead:
+                    if self.p1_msg[0][0] in possible_moves:
+                        p1_action = self.p1_msg[0]
+                    self.p1_msg.clear()
+                else:
+                    if self.p1_msg[0][0] == "s":
+                        p1_action = self.p1_msg[0]
+                    else:
+                        for i in range(4):
+                            if self.p1_hps[i] > 0:
+                                p1_action = f"s{i}"
+                                break
+                    self.p1_msg.clear()
+            
             p2_action = None
-            if 1 not in dead:
-                if self.p2_msg[0][0] in possible_moves:
-                    p2_action = self.p2_msg[0]
-                self.p2_msg.clear()
-            else:
-                if self.p2_msg[0][0] == "s":
-                    p2_action = self.p2_msg[0]
-                self.p2_msg.clear()
+            if len(self.p2_msg) != 0 and len(self.p2_msg[0]) != 0:
+                if 1 not in dead:
+                    if self.p2_msg[0][0] in possible_moves:
+                        p2_action = self.p2_msg[0]
+                    self.p2_msg.clear()
+                else:
+                    if self.p2_msg[0][0] == "s":
+                        p2_action = self.p2_msg[0]
+                    else:
+                        for i in range(4):
+                            if self.p2_hps[i] > 0:
+                                p2_action = f"s{i}"
+                                break
+                    self.p2_msg.clear()
 
-            if self.p1_msg[0] != "s" and self.p1_hps[self.curr_cards[[0]]] <= 0:
-                for i in range(4):
-                    if self.p1_hps[i] > 0:
-                        p1_action = f"s{i}"
-                        break
-            if self.p2_msg[0] != "s" and self.p2_hps[self.curr_cards[[1]]] <= 0:
-                for i in range(4):
-                    if self.p2_hps[i] > 0:
-                        p2_action = f"s{i}"
-                        break
-
+                
             actions = (p1_action, p2_action)
             
             # carry out actions
@@ -663,10 +665,9 @@ class BattleEnv:
 
 if __name__ == "__main__":
     # Server's IPv4 address, port
-    serverIP = "localhost"
+    serverIP = "192.168.1.2"
     port = 5555
 
     serverObj = Server(serverIP, port)
     input()
     serverObj.close()
-
