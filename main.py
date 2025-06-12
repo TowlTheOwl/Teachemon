@@ -62,8 +62,8 @@ login_bg = pygame.transform.scale(login, (ScreenWidth, ScreenHeight))
 screen_bg = pygame.transform.scale(main_screen_bg, (ScreenWidth, ScreenHeight))
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
-dispenser = pygame.image.load("Images/draft dispense.png")
-resized_dispenser = pygame.transform.scale(dispenser, (600, 600))
+dispenser = pygame.image.load("Images/singleDispenser.png")
+resized_dispenser = pygame.transform.scale(dispenser, (500, 300))
 sprite_sheet = pygame.image.load("Images/dispense sheet.png").convert_alpha()
 cardanim_sheet = pygame.image.load("Images/cardanim.png").convert_alpha()
 lever = pygame.image.load("Images/test6.png")
@@ -124,6 +124,18 @@ no_coins = ""
 no_coins_timer = 0
 no_coins_duration = 2000
 owned = False
+
+#sfx
+
+volume = 50  
+select_sfx = pygame.mixer.Sound("SFx/select.wav")
+dispense_sfx = pygame.mixer.Sound("SFX/dispense.wav")
+page_turn_sfx = pygame.mixer.Sound("SFX/paperSlide.wav")
+card_zoom_sfx = pygame.mixer.Sound("SFx/pageTurn.wav")
+no_coins_sfx = pygame.mixer.Sound("SFX/noCoins.wav")
+new_card_sfx = pygame.mixer.Sound("SFX/new.wav")
+owned_card_sfx = pygame.mixer.Sound("SFX/owned.wav")
+coins_sfx = pygame.mixer.Sound("SFX/coins.mp3")
 
 #sprite animation for card dispenser
 back = (0,0,0)
@@ -236,6 +248,7 @@ running = [True]
 
 server_messages = [None, None, None, None, None, None, None] # check utils
 
+coins = 50
 selected_cards = [None, None, None, None]
 userdata = [username, password, [], selected_cards, 50] # username, password, owned cards, selected cards
 cards_owned = userdata[2]
@@ -350,7 +363,9 @@ while running[0]:
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
             keep_pointer = False
-
+            select_sfx.play()Add commentMore actions
+            select_sfx.set_volume(volume/100)
+            
             if page == "Start":
                 if pointer_pos == 1:
                     page = "Login"
@@ -558,19 +573,29 @@ while running[0]:
                 if pointer_pos == 1:
                     page = "Menu"
             elif page == "Trade":
-                if pointer_pos == 2:
-                    page = "Menu"
+                page = "Menu"
             elif page == "Settings":
                 if pointer_pos == 1:
                     draw_credits(screen, button_exit, fontx1, hong)
                 elif pointer_pos == 2:
+                    page = "Volume"
+                    slider_x = 200
+                    slider_y = 300
+                    slider_width = 600
+                    slider_height = 100
+                    target_volume = volume
+                elif pointer_pos == 3:
                     page = "Menu"
+            elif page == "Volume":
+                page = "Settings"
             elif page == "Binder":
                 if pointer_pos == 2:
                     page = "Menu"
                 
                 if card_zoom < 3:
                     card_zoom += 0.2
+                    card_zoom_sfx.play()
+                    card_zoom_sfx.set_volume(volume/100)
                 if card_zoom >= 3:
                     card_zoom = 1
                 
@@ -614,6 +639,8 @@ while running[0]:
                     elif left_page + 1 > 2:
                         left_page -= 2
                         highlight_num = 11 + highlight_num
+                        page_turn_sfx.play()
+                        page_turn_sfx.set_volume(volume/100)
                     if card_zoom >= 3:
                         card_zoom = 1
 
@@ -625,6 +652,9 @@ while running[0]:
 
             elif page == "Choose Trade Card":
                 if pointer_hover>0: pointer_hover-=1
+
+            elif page == "Volume":
+                target_volume = max(target_volume - 5, 0)
 
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
@@ -640,6 +670,8 @@ while running[0]:
                     elif left_page + 1 < 8:
                         left_page += 2
                         highlight_num = highlight_num % 9 - 2
+                        page_turn_sfx.play()
+                        page_turn_sfx.set_volume(volume/100)
                     if card_zoom >= 3:
                         card_zoom = 1
 
@@ -648,7 +680,10 @@ while running[0]:
                     pointer_pos += 1
                 if pointer_pos == 5:
                     if pointer_hover<len(userdata[2])-1: pointer_hover+=1
-                    
+                        
+            elif page == "Volume":
+                target_volume = min(target_volume + 5, 100)
+                
             elif page == "Trade":
                 if pointer_pos < 4:
                     pointer_pos = 4
@@ -658,8 +693,14 @@ while running[0]:
 
         if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha":
             if lever_rect.collidepoint(event.pos) and not card_visible:
-                if userdata[4] >= 10:
-                    userdata[4] -= 10
+                if coins >= 10:
+                    coins_sfx.play()
+                    coins_sfx.set_volume(volume/100)
+
+                    dispense_sfx.play()
+                    dispense_sfx.set_volume(volume/100)
+                    coins -= 10
+                    userdata[4] = coins
                     connection.send(f"k{userdata[4]}".encode())
                     
                     gacha = random.randint(1, 59)
@@ -684,6 +725,8 @@ while running[0]:
                     action += 1
                     dispenser_frame = 0
                 else:
+                    no_coins_sfx.play()Add commentMore actions
+                    no_coins_sfx.set_volume(volume/100)
                     no_coins = "NOT ENOUGH COINS"
                     no_coins_timer = pygame.time.get_ticks()
             elif card_visible and card_rect and card_rect.collidepoint(event.pos):
@@ -1152,19 +1195,17 @@ while running[0]:
             pointer_x = 740
             pointer_y = 550
         
-        draw_choose_your_team(screen, button_exit, text_choose_your_team, text_choose_your_team_rect, text_go, text_go_bg, text_go_rect, selected_cards, base_font, card_images)
-
+        draw_choose_your_team(screen, button_exit, text_choose_your_team, text_choose_your_team_rect, text_go, text_go_bg, text_go_rect, selected_cards, pygame.font.Font("Teachemon.ttf", 6), card_images, teachemon_data)
         # draw selected card pointer
-        screen.blit(pointer_down, ((pointer_selected * 200)-22, 60))
+        screen.blit(pointer_down, ((pointer_selected * 180)+30, 60))
         # draw hover card pointer
         if pointer_pos <= 4:
-            screen.blit(pointer_up, ((pointer_pos * 200)-22, 270))
+            screen.blit(pointer_up, ((pointer_pos * 180)+30, 270))
         if pointer_pos == 5:
-            screen.blit(pointer_down, (478, 270))
-            screen.blit(pointer_up, (478, 480))
+            screen.blit(pointer_down, (478, 280))
+            screen.blit(pointer_up, (478, 490))
         
-        draw_card_wheel(screen, userdata[2], selected_cards, pointer_hover, base_font, small_font, card_images)
-
+        draw_card_wheel(screen, userdata[2], selected_cards, pointer_hover, base_font, pygame.font.Font("Teachemon.ttf", 6), card_images, teachemon_data)
     elif page == "Loading":
         pointer_on = True
         pointer_x = 740
@@ -1287,7 +1328,7 @@ while running[0]:
                     if player_num in dead_players:
                         battle_page = "30"
                     timer_on = True
-                    timer = Timer(int(parsed_msg[1]), screen, running, base_font, (30, 30))
+                    timer = Timer(int(parsed_msg[1]), screen, running, base_font, (50, 50))
                 elif game_message[1] == "2":
                     first_to_cast = 0
                     actions = json.loads(parsed_msg[0])
@@ -1655,10 +1696,7 @@ while running[0]:
             pointer_on = False
         if card_zoom > 1 and card_zoom <= 3:
             card_zoom += 0.2
-        draw_binder(screen, left_page, left_page + 1, resized_binder, fontx1, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data)
-        
-
-        
+        draw_binder(screen, left_page, left_page + 1, resized_binder, pygame.font.Font("Teachemon.ttf", 9), card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data, login_bg)
         
         # if highlight_num < 9:
         #    screen.blit(binder_highlight, (150 + highlight_num%3*95, 100 + highlight_num//3*135))
@@ -1676,14 +1714,13 @@ while running[0]:
         
         pointer_x = 55
         pointer_y = 257 + 70 * (pointer_pos - 1)        
-        draw_claim_menu(screen, logo, big_font.render("GACHA", True, (0, 0, 0)), big_font.render("TRADE", True, (0, 0, 0)), big_font.render("EXIT", True, (0, 0, 0)))
-    
+        draw_claim_menu(screen, logo, big_font.render("GACHA", True, (0, 0, 0)), big_font.render("TRADE", True, (0, 0, 0)), big_font.render("EXIT", True, (0, 0, 0)), resized_dispenser, screen_bg)
     elif page == "Gacha":
         pointer_on = True
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
-        draw_claim(screen, button_exit, font, userdata[4], animation_list, dispenser_frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin,
+        draw_claim(screen, button_exit, font, coins, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin,
                    alpha, card_started, card_anim, max_cardanim, fade_started,
                    cardanim_list, cardanim_frame, display_started, no_coins, no_coins_duration, no_coins_timer, owned, big_font)
         current_time = pygame.time.get_ticks()
@@ -1702,6 +1739,12 @@ while running[0]:
                 last_update = current_time
                 if cardanim_frame >= len(cardanim_list):  #reset animation if it reaches the last frame
                     cardanim_frame = 0
+                    if gacha not in cards_owned:Add commentMore actions
+                        new_card_sfx.play()
+                        new_card_sfx.set_volume(volume/100)
+                    else:
+                        owned_card_sfx.play()
+                        owned_card_sfx.set_volume(volume/100)
         
         if card_started:
             card_anim += 1
@@ -1787,11 +1830,27 @@ while running[0]:
        
     elif page == "Settings":
         pointer_on = True
-        if pointer_pos > 2:
-            pointer_pos = 2
+        if pointer_pos > 3:
+            pointer_pos = 3
         pointer_x = 270
         pointer_y = 107 + 70 * (pointer_pos-1)
-        draw_settings(screen, button_credits, button_exit)
+        draw_settings(screen, button_credits, base_font.render("VOLUME", True, (0, 0, 0)), button_exit)Add commentMore actions
+
+    elif page == "Volume":
+        pointer_on = False  
+
+        screen.fill("grey")
+        screen.blit(font.render("ADJUST VOLUME", True, "Black"), (260, 150))
+        screen.blit(button_exit, (785, 555))
+        screen.blit(pointer, (730, 555))
+
+        if abs(volume - target_volume) > 0.5:  
+            volume += (target_volume - volume) * 0.1  
+
+        pygame.mixer.music.set_volume(volume / 100)
+        pygame.draw.rect(screen, "black", (slider_x, slider_y, slider_width, slider_height))
+        filled_width = int((volume / 100) * slider_width)
+        pygame.draw.rect(screen, "yellow", (slider_x, slider_y, filled_width, slider_height))
     if pointer_on:
         screen.blit(pointer, (pointer_x, pointer_y))
 
