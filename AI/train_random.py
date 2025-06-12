@@ -76,8 +76,8 @@ def train_agent():
         )
         print("Succesfully created new model")
 
-    TIMESTEPS = 50_000
-    for i in range(1,10):
+    TIMESTEPS = 500_000
+    for i in range(1,2):
         model.learn(
             total_timesteps=TIMESTEPS,
             reset_num_timesteps=False,

@@ -1,5 +1,5 @@
 Name,Type,HP,Move 1 Name,Move 1 Damage,Move 1 Speed,Move 1 Cost,Move 2 Name,Move 2 Damage,Move 2 Speed,Move 2 Cost,Move 3 Name,Move 3 Damage,Move 3 Speed,Move 3 Cost
-Hong,Tech,100,HiChew Toss,60,1,8,Daniel farts,50,2,8,Get house points,40,3,8
+Hong,Tech,100,HiChew Toss,60,1,8,Daniel farts,50,2,6,Get house points,40,3,4
 Walker,Tech,100,Look,40,2,5,Biking,20,4,2,Robots,40,3,6
 Miller,History,100,Pop Quiz,60,1,10,Breaking News!,20,5,2,Look at My Cat,30,5,3
 Yang,Tech,100,Debug,40,3,5,Pandas,30,5,5,Soothing Music,20,5,3

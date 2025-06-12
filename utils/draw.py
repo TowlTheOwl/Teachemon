@@ -128,8 +128,12 @@ def draw_trade_result(screen, font, success, exit):
         screen.blit(font.render("TRADE DENCLINED...", True, "Black"), (200, 200))
     screen.blit(exit, (785,555))
 
-def draw_singleplayer_menu(screen):
+def draw_singleplayer_menu(screen:pygame.SurfaceType, font, big_font):
     screen.fill("grey")
+    screen.blit(big_font.render("SINGLE PLAYER", True, "Black"), (150, 50))
+    screen.blit(font.render("EASY", True, "Black"), (150, 200))
+    screen.blit(font.render("MEDIUM", True, "Black"), (150, 350))
+    screen.blit(font.render("HARD", True, "Black"), (150, 500))
 
 def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank, teacher_info:dict, opp_username, small_font:pygame.font.Font, other_cards:tuple):
     if page == "00":

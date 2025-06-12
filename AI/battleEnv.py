@@ -54,7 +54,7 @@ class BattleGymEnv(gym.Env):
         self.action_space = spaces.Discrete(10)
 
         # define observation space
-        # [selected card (one-hot len=4), hps (len=4), energies (len=4), card infos(9 per card * 4 cards = 36 len), attack potion active] * 2 (same for other) = 98 action space
+        # [selected card (one-hot len=4), hps (len=4), energies (len=4), card infos(9 per card * 4 cards = 36 len), attack potion active] * 2 (same for other) = 98 observation space
         # 9 spaces for card data of one card 
         self.observation_space = spaces.Box(low=0.0, high=1.0, shape=(98,), dtype=np.float32)
 
@@ -72,7 +72,11 @@ class BattleGymEnv(gym.Env):
             9: "Switch to Teachemon 4",
         }
 
+        self.cast_order = []
         self.reset()
+
+    def get_cards(self):
+        return self.p1_cards, self.p2_cards
 
     def reset(self, *, seed=None, options=None):
         if seed is not None:
@@ -185,9 +189,7 @@ class BattleGymEnv(gym.Env):
         
         self.energies[player_idx][self.curr_cards[player_idx]] -= int(card_data[f"Move {ability_idx + 1} Cost"])
         damage_dealt = min(damage, opp_hps[opp_curr_card])
-        opp_hps[opp_curr_card] -= damage_dealt
-        if opp_hps[opp_curr_card] < 0:
-            opp_hps[opp_curr_card] = 0
+        opp_hps[opp_curr_card] = max(opp_hps[opp_curr_card]-damage_dealt, 0)
         
         return damage_dealt
         
@@ -214,6 +216,8 @@ class BattleGymEnv(gym.Env):
 
         curr_cards_data = (self.teachemon_data[self.p1_cards[self.curr_cards[0]]-1], self.teachemon_data[self.p2_cards[self.curr_cards[1]]-1])
 
+        self.cast_order.clear()
+
         # handle actions
         moved = [False, False]
         if self.p1_hps[self.curr_cards[0]] <= 0:
@@ -227,6 +231,7 @@ class BattleGymEnv(gym.Env):
                 if actions[i] > 5: # 6-9 (swap)
                     self.curr_cards[i] = actions[i] - 6
                     moved[i] = True
+                    self.cast_order.append(i)
         
         
         # items are used
@@ -239,8 +244,9 @@ class BattleGymEnv(gym.Env):
                         elif actions[i] == 4:
                             self.all_effects[i][1] = 1
                         else:
-                            self.energies[i][self.curr_cards[i]] = min(10, self.energies[i][self.curr_cards[i]] + 1)
+                            self.energies[i][self.curr_cards[i]] = min(10, self.energies[i][self.curr_cards[i]] + 5)
                         moved[i] = True
+                        self.cast_order.append(i)
         
         # abilities are cast
         p1_damage_dealt = 0
@@ -252,16 +258,22 @@ class BattleGymEnv(gym.Env):
 
                 if p1_speed > p2_speed or (p1_speed == p2_speed and random.randint(0, 1) == 0):
                     p1_damage_dealt = self._cast_ability(0, curr_cards_data[0], action_p1, self.curr_cards[1], self.p2_hps)
+                    self.cast_order.append(0)
                     if self.p2_hps[self.curr_cards[1]] > 0:
                         p2_damage_dealt = self._cast_ability(1, curr_cards_data[1], action_p2, self.curr_cards[0], self.p1_hps)
+                        self.cast_order.append(1)
                 else:
                     p2_damage_dealt = self._cast_ability(1, curr_cards_data[1], action_p2, self.curr_cards[0], self.p1_hps)
+                    self.cast_order.append(1)
                     if self.p1_hps[self.curr_cards[0]] > 0:
                         p1_damage_dealt = self._cast_ability(0, curr_cards_data[0], action_p1, self.curr_cards[1], self.p2_hps)
+                        self.cast_order.append(0)
             elif action_p1 < 3:
                 p1_damage_dealt = self._cast_ability(0, curr_cards_data[0], action_p1, self.curr_cards[1], self.p2_hps)
+                self.cast_order.append(0)
             elif action_p2 < 3:
                 p2_damage_dealt = self._cast_ability(1, curr_cards_data[1], action_p2, self.curr_cards[0], self.p1_hps)
+                self.cast_order.append(1)
 
 
         # update effects & energy
