@@ -287,10 +287,12 @@ def draw_cut(screen, button_exit, font, big_font, animation_list, frame, vs_bg, 
 
     screen.blit(animation_list[frame], (0, -150))
 
-def draw_settings(screen, button_credits, button_exit, login_bg):
-    screen.blit(login_bg, (0,0))
+
+def draw_settings(screen, button_credits, button_volume, button_exit):
+    screen.fill("grey")
     screen.blit(button_credits, (315,112))
-    screen.blit(button_exit, (398,182))
+    screen.blit(button_volume, (398, 182))
+    screen.blit(button_exit, (415,252))
 
 def draw_credits(screen, button_exit, font, image):
     pygame.init()
@@ -338,7 +340,7 @@ def draw_credits(screen, button_exit, font, image):
         screen.fill("black")
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 running=False
 
         image_x = (width - image.get_width()) // 2
@@ -355,6 +357,48 @@ def draw_credits(screen, button_exit, font, image):
         pygame.display.flip()
         clock.tick(60)
 
+
+def draw_volume(screen, button_exit, pointer, font):
+    screen.fill("grey")
+    slider_x = 200
+    slider_y = 300
+    slider_width = 600
+    slider_height = 100
+    volume = 50  
+    target_volume = volume  
+
+    running = True
+    while running:
+        screen.fill("grey")
+        screen.blit(font.render("ADJUST VOLUME", True, "Black"), (260, 150))
+        screen.blit(button_exit, (785, 555))
+        screen.blit(pointer, (730, 555))
+
+        if abs(volume - target_volume) > 0.5:  
+            volume += (target_volume - volume) * 0.1  
+
+        pygame.mixer.music.set_volume(volume / 100)
+        pygame.draw.rect(screen, "black", (slider_x, slider_y, slider_width, slider_height))
+        filled_width = int((volume / 100) * slider_width)
+        pygame.draw.rect(screen, "yellow", (slider_x, slider_y, filled_width, slider_height))
+
+        for event in pygame.event.get():
+            
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RIGHT:
+                    target_volume = min(target_volume + 5, 100) 
+                elif event.key == pygame.K_LEFT:
+                    target_volume = max(target_volume - 5, 0)  
+                elif event.key == pygame.K_RETURN:
+                    running = False
+
+        pygame.display.flip()
+    
+
+
+
+
+    
 def draw_choose_your_team(screen:pygame.Surface, button_exit, text_cyt, cyt_rect, button_go_text, button_go_bg, button_go_rect, selected_cards, font, card_images):
     screen.fill("grey")
     pygame.draw.rect(screen, (150, 150, 150), button_go_bg, border_radius=5)
