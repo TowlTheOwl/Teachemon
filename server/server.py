@@ -665,7 +665,7 @@ class BattleEnv:
 
 if __name__ == "__main__":
     # Server's IPv4 address, port
-    serverIP = "192.168.1.2"
+    serverIP = "localhost"
     port = 5555
 
     serverObj = Server(serverIP, port)

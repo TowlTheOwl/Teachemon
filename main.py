@@ -15,7 +15,7 @@ import csv
 from AI.battleEnv import BattleGymEnv
 
 # Connect to server's IPv4 address
-server = "192.168.1.2"
+server = "localhost"
 # Random open port
 port = 5555
 
@@ -299,7 +299,7 @@ while running[0]:
                 elif pointer_pos < 7:
                     pointer_pos += 1
             elif page == "Trade":
-                if pointer_pos < 3:
+                if pointer_pos < 4:
                     pointer_pos += 1
             elif page == "Choose Trade Card":
                 if pointer_pos < 2:
@@ -363,7 +363,7 @@ while running[0]:
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
             keep_pointer = False
-            select_sfx.play()Add commentMore actions
+            select_sfx.play()
             select_sfx.set_volume(volume/100)
             
             if page == "Start":
@@ -400,6 +400,7 @@ while running[0]:
             elif page == "SinglePlayerMenu":
                 bot_mode = pointer_pos-1
                 page = "SBattle"
+                sbattle_page = "00"
                 env = BattleGymEnv()
                 model_dirs = ("AI/easy.zip", "AI/medium.zip", "AI/hard.zip")
                 enemy_model = MaskablePPO.load(model_dirs[bot_mode], env=env)
@@ -418,6 +419,9 @@ while running[0]:
                         curr_card = i
                 curr_energy = [int(i*10) for i in player_obs[8:12]]
                 curr_hp = [int(i*100) for i in player_obs[4:8]]
+
+                print(f"curr_energy: {curr_energy}")
+                print(f"curr_hp: {curr_hp}")
                 
                 other_cards = player_cards.copy()
                 other_cards.pop(curr_card)
@@ -497,7 +501,7 @@ while running[0]:
                         if pointer_pos < 4:
                             if sbattle_page == "10":
                                 # check whether the player has enough energy to use the move
-                                if curr_energy[curr_card] > int(teachemon_data[player_cards[curr_card]-1][f"Move {pointer_pos} Cost"]):
+                                if curr_energy[curr_card] >= int(teachemon_data[player_cards[curr_card]-1][f"Move {pointer_pos} Cost"]):
                                     selected_move = sbattle_page[0] + str(pointer_pos)
                                 else:
                                     display_box(screen, "NOT ENOUGH ENERGY", base_font, 1)
@@ -725,7 +729,7 @@ while running[0]:
                     action += 1
                     dispenser_frame = 0
                 else:
-                    no_coins_sfx.play()Add commentMore actions
+                    no_coins_sfx.play()
                     no_coins_sfx.set_volume(volume/100)
                     no_coins = "NOT ENOUGH COINS"
                     no_coins_timer = pygame.time.get_ticks()
@@ -1739,7 +1743,7 @@ while running[0]:
                 last_update = current_time
                 if cardanim_frame >= len(cardanim_list):  #reset animation if it reaches the last frame
                     cardanim_frame = 0
-                    if gacha not in cards_owned:Add commentMore actions
+                    if gacha not in cards_owned:
                         new_card_sfx.play()
                         new_card_sfx.set_volume(volume/100)
                     else:
@@ -1834,7 +1838,7 @@ while running[0]:
             pointer_pos = 3
         pointer_x = 270
         pointer_y = 107 + 70 * (pointer_pos-1)
-        draw_settings(screen, button_credits, base_font.render("VOLUME", True, (0, 0, 0)), button_exit)Add commentMore actions
+        draw_settings(screen, button_credits, base_font.render("VOLUME", True, (0, 0, 0)), button_exit)
 
     elif page == "Volume":
         pointer_on = False  
