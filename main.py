@@ -196,7 +196,7 @@ card_images = {}
 card_back = pygame.transform.scale(pygame.image.load("Images/card_back.png"), (90, 123))
 for i in range(59):
     if i < 18: 
-        card = pygame.transform.scale(pygame.image.load("Images/card_" + str(i) + ".png"), (90, 123))
+        card = pygame.image.load("Images/card_" + str(i) + ".png")
     #temporary placeholder for the rest of the card b/c too lazy to load in rn
     else:
         card = pygame.transform.scale(pygame.image.load("Images/card_placeholder.png"), (90, 123))
@@ -524,7 +524,14 @@ while running[0]:
                                 pointer_pos = 2
                     elif battle_page in ("10", "20"):
                         if pointer_pos < 4:
-                            selected_move = battle_page[0] + str(pointer_pos)
+                            if battle_page == "10":
+                                # check whether the player has enough energy to use the move
+                                if energy[curr_cards[player_num]] > int(teachemon_data[selected_cards[curr_cards[player_num]]-1][f"Move {pointer_pos} Cost"]):
+                                    selected_move = battle_page[0] + str(pointer_pos)
+                                else:
+                                    display_box(screen, "NOT ENOUGH ENERGY", base_font, 1)
+                            else:
+                                selected_move = battle_page[0] + str(pointer_pos)
                         elif pointer_pos == 4:
                             pointer_pos = 1
                             battle_page = "00"
@@ -554,7 +561,7 @@ while running[0]:
                     page = "Menu"
             elif page == "Settings":
                 if pointer_pos == 1:
-                    print("credits")
+                    draw_credits(screen, button_exit, fontx1, hong)
                 elif pointer_pos == 2:
                     page = "Volume"
                     draw_volume(screen, button_exit, pointer, base_font)
@@ -1143,18 +1150,18 @@ while running[0]:
             pointer_x = 740
             pointer_y = 550
         
-        draw_choose_your_team(screen, button_exit, text_choose_your_team, text_choose_your_team_rect, text_go, text_go_bg, text_go_rect, selected_cards, base_font, card_images)
+        draw_choose_your_team(screen, button_exit, text_choose_your_team, text_choose_your_team_rect, text_go, text_go_bg, text_go_rect, selected_cards, pygame.font.Font("Teachemon.ttf", 6), card_images, teachemon_data)
 
         # draw selected card pointer
-        screen.blit(pointer_down, ((pointer_selected * 200)-22, 60))
+        screen.blit(pointer_down, ((pointer_selected * 180)+30, 60))
         # draw hover card pointer
         if pointer_pos <= 4:
-            screen.blit(pointer_up, ((pointer_pos * 200)-22, 270))
+            screen.blit(pointer_up, ((pointer_pos * 180)+30, 270))
         if pointer_pos == 5:
-            screen.blit(pointer_down, (478, 270))
-            screen.blit(pointer_up, (478, 480))
+            screen.blit(pointer_down, (478, 280))
+            screen.blit(pointer_up, (478, 490))
         
-        draw_card_wheel(screen, userdata[2], selected_cards, pointer_hover, base_font, small_font, card_images)
+        draw_card_wheel(screen, userdata[2], selected_cards, pointer_hover, base_font, pygame.font.Font("Teachemon.ttf", 6), card_images, teachemon_data)
 
     elif page == "Loading":
         pointer_on = True
@@ -1186,6 +1193,7 @@ while running[0]:
                     server_messages[3] = None
                     print("DC\n")
                 elif server_messages[3][0] == "u":
+                    # initialize variables for the game
                     user_datas = server_messages[3][1:].split("'")
                     opponent_username = user_datas[opp_num]
                     opponent_cards = json.loads(user_datas[opp_num+2])
@@ -1198,8 +1206,6 @@ while running[0]:
                     other_cards = selected_cards.copy()
                     other_cards.pop(0)
                     other_cards = tuple(other_cards)
-                    time.sleep(3)
-                    pointer_pos = 1
                     selected_move = None
                     first_frame = False
                     names = [None, None]
@@ -1214,6 +1220,10 @@ while running[0]:
                     self_effect = [0, 0]
                     opp_effect = [0, 0]
                     waiting = False
+
+                    
+                    time.sleep(3)
+                    pointer_pos = 1
                     page = "Cut"
                     print("CUT SCENE\n")
                 else:
@@ -1363,6 +1373,8 @@ while running[0]:
                         # send selected move to the server
                         if selected_move is not None:
                             sent_move = ("m", "i", "s")[int(selected_move[0])-1] + str(int(selected_move[1])-1)
+                            if sent_move[0] == "m":
+                                energy[curr_cards[player_num]] -= int(teachemon_data[selected_cards[curr_cards[player_num]]-1][f"Move {selected_move[1]} Cost"])
                         else:
                             sent_move = "n0"
                         connection.send(f"x{sent_move}".encode())
@@ -1419,6 +1431,13 @@ while running[0]:
                                 card_num = selected_cards[curr_cards[player_num]] if source == player_num else opponent_cards[curr_cards[source]]
                                 data = teachemon_data[card_num-1]
                                 move_info = (source_name.upper(), data["Name"].upper(), data[f"Move {int(action_name[1]) + 1} Name"].upper(), data[f"Move {int(action_name[1]) + 1} Damage"].upper())
+                                scene = 0
+                                print_delay = 3
+                            elif action_name[0] == "i":
+                                card_num = selected_cards[curr_cards[player_num]] if source == player_num else opponent_cards[curr_cards[source]]
+                                data = teachemon_data[card_num-1]
+                                potion_names = ("Attack Potion", "Defense Potion", "Energy Potion")
+                                item_info = (source_name.upper(), data["Name"].upper(), potion_names[int(action_name[1])])
                                 scene = 0
                                 print_delay = 3
                             if source == player_num:
@@ -1520,6 +1539,59 @@ while running[0]:
                                         if frame >= 24*2:
                                             animating = 2
                                     frame += 1
+                            elif action_name[0] == "i":
+                                screen.blit(animation_bg, animation_bg_pos)
+                                if animation_bg_pos[0] < 0:
+                                    animation_bg_pos = (animation_bg_pos[0] + 50, animation_bg_pos[1] + 30)
+                                else:
+                                    """
+                                    Background fully animated -> Need to display:
+                                    - Player Name
+                                    - Teachemon Name
+                                    - Item Name
+                                    """
+                                    if scene >= 0:
+                                        if scene == 0:
+                                            if (frame//print_delay <= len(item_info[0])):
+                                                name = base_font.render(item_info[0][:frame//print_delay], True, (0, 0, 0))
+                                            else:
+                                                name = base_font.render(item_info[0], True, (0, 0, 0))
+                                                if frame//print_delay - len(item_info[0]) == 2:
+                                                    scene += 1
+                                                    frame = 0
+                                        else:
+                                            name = base_font.render(item_info[0], True, (0, 0, 0))
+                                        screen.blit(name, (100, 100))
+                                    if scene >= 1:
+                                        if scene == 1:
+                                            if (frame//print_delay <= len(item_info[1])):
+                                                tname = base_font.render(item_info[1][:frame//print_delay], True, (0, 0, 0))
+                                            else:
+                                                tname = base_font.render(item_info[1], True, (0, 0, 0))
+                                                if frame//print_delay - len(item_info[1]) == 2:
+                                                    scene += 1
+                                                    frame = 0
+                                        else:
+                                            tname = base_font.render(item_info[1], True, (0, 0, 0))
+                                        screen.blit(tname, (250, 200))
+                                    if scene >= 2:
+                                        if scene == 2:
+                                            if (frame//print_delay <= len(item_info[2])):
+                                                item = base_font.render(item_info[2][:frame//print_delay], True, (0, 0, 0))
+                                            else:
+                                                item = base_font.render(item_info[2], True, (0, 0, 0))
+                                                if frame//print_delay - len(item_info[2]) == 2:
+                                                    scene += 1
+                                                    frame = 0
+                                        else:
+                                            item = base_font.render(item_info[2], True, (0, 0, 0))
+                                        screen.blit(item, (400, 300))
+                                    if scene > 2:
+                                        if frame >= 24*2:
+                                            animating = 2
+                                    frame += 1
+
+                                    
                             else:
                                 animating = 2
 
@@ -1531,10 +1603,33 @@ while running[0]:
                                     other_cards = selected_cards.copy()
                                     other_cards.remove(selected_cards[curr_cards[player_num]])
                                     other_cards = tuple(other_cards)
+                            elif action_name[0] == "i":
+                                if action_name[1] == "0":
+                                    if is_self:
+                                        self_effect[0] = 3
+                                    else:
+                                        opp_effect[0] = 3
+                                elif action_name[1] == "1":
+                                    if is_self:
+                                        self_effect[1] = 1
+                                    else:
+                                        opp_effect[1] = 1
+                                elif action_name[1] == "2":
+                                    if is_self:
+                                        energy[curr_cards[player_num]] = min(10, energy[curr_cards[player_num]] + 5)
                             move_num += 1
                     else:
                         move_num+=1
                 else:
+                    ### handle end of turn events ###
+                    # update effects
+                    self_effect[0] = max(self_effect[0]-1, 0)
+                    self_effect[1] = 0
+                    opp_effect[0] = max(opp_effect[0]-1, 0)
+                    opp_effect[1] = 0
+                    for i in range(len(energy)):
+                        energy[i] = min(10, energy[i]+1)
+
                     connection.send("xanicomp".encode())
                     game_status = "waiting"
                 if first_frame:
@@ -1556,7 +1651,7 @@ while running[0]:
             pointer_on = False
         if card_zoom > 1 and card_zoom <= 3:
             card_zoom += 0.2
-        draw_binder(screen, left_page, left_page + 1, resized_binder, fontx1, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data, login_bg)
+        draw_binder(screen, left_page, left_page + 1, resized_binder, pygame.font.Font("Teachemon.ttf", 9), card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data)
         
 
         
