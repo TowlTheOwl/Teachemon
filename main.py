@@ -17,6 +17,12 @@ server = "localhost"
 # Random open port
 port = 5555
 
+#random music
+#pygame.mixer.init()
+#pygame.mixer.music.load("C:/Users/s-carle/Downloads/test.wav")
+#pygame.mixer.music.play(-1)
+
+
 #Create display
 ScreenWidth = 1000
 ScreenHeight = 600
@@ -273,7 +279,26 @@ while running[0]:
                 elif pointer_pos < 7:
                     pointer_pos += 1
             elif page == "Trade":
+<<<<<<< Updated upstream
                 pointer_pos = (pointer_pos%2) + 1
+=======
+                if pointer_pos < 3:
+                    pointer_pos += 1
+            elif page == "Choose Trade Card":
+                if pointer_pos < 2:
+                    pointer_on = True
+                    pointer_pos += 1
+            # replace this next sprint (?), rn cut scene to view trade is triggered by pressing the DOWN button 
+            # but once server connection is implemented, cut scene will be triggered once the other players selects their card
+            elif page == "Trade Loading":
+                page = "Cut"     
+                cut_to = 3 
+            
+            elif page == "View Trade":
+                if pointer_pos < 2:
+                    pointer_pos += 1
+
+>>>>>>> Stashed changes
             else:
                 pointer_pos += 1
 
@@ -295,7 +320,25 @@ while running[0]:
                 elif pointer_pos > 5:
                     pointer_pos -= 1
             elif page == "Trade":
+<<<<<<< Updated upstream
                 pointer_pos = (pointer_pos%2) + 1
+=======
+                if pointer_pos > 1:
+                    pointer_pos -= 1
+            elif page == "View Trade":
+                if pointer_pos > 1:
+                    pointer_pos -= 1
+                    
+            # replace this next sprint (?), rn cut scene is triggered by pressing the UP button 
+            # but once server connection is implemented, cut scene will be triggered once the other players selects this player (must match)
+            elif page == "Trade Loading":
+                page = "Cut"     
+                cut_to = 2 
+            elif page == "Choose Trade Card":
+                if pointer_pos > 1:
+                    pointer_on = False
+                    pointer_pos -= 1                    
+>>>>>>> Stashed changes
             else:
                 if pointer_pos > 1:
                     pointer_pos -= 1
@@ -434,7 +477,12 @@ while running[0]:
                 if pointer_pos == 1:
                     draw_credits(screen, button_exit, fontx1, hong)
                 elif pointer_pos == 2:
+                    page = "Volume"
+                    draw_volume(screen, button_exit, pointer, base_font)
+                elif pointer_pos == 3:
                     page = "Menu"
+            elif page == "Volume":
+                page = "Settings"
             elif page == "Binder":
                 if pointer_pos == 2:
                     page = "Menu"
@@ -461,6 +509,10 @@ while running[0]:
                     page = "Start"
                     username_box.reset()
                     password_box.reset()
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
             if not keep_pointer:
                 pointer_pos = 1
         
@@ -1135,11 +1187,11 @@ while running[0]:
        
     elif page == "Settings":
         pointer_on = True
-        if pointer_pos > 2:
-            pointer_pos = 2
+        if pointer_pos > 3:
+            pointer_pos = 3
         pointer_x = 270
         pointer_y = 107 + 70 * (pointer_pos-1)
-        draw_settings(screen, button_credits, button_exit)
+        draw_settings(screen, button_credits, base_font.render("VOLUME", True, (0, 0, 0)), button_exit)
     if pointer_on:
         screen.blit(pointer, (pointer_x, pointer_y))
 
