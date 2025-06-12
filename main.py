@@ -15,15 +15,9 @@ import csv
 from AI.battleEnv import BattleGymEnv
 
 # Connect to server's IPv4 address
-server = "localhost"
+server = "192.168.1.2"
 # Random open port
 port = 5555
-
-#random music
-#pygame.mixer.init()
-#pygame.mixer.music.load("C:/Users/s-carle/Downloads/test.wav")
-#pygame.mixer.music.play(-1)
-
 
 #Create display
 ScreenWidth = 1000
@@ -68,8 +62,8 @@ login_bg = pygame.transform.scale(login, (ScreenWidth, ScreenHeight))
 screen_bg = pygame.transform.scale(main_screen_bg, (ScreenWidth, ScreenHeight))
 binder = pygame.image.load("Images/binder2.png")
 resized_binder = pygame.transform.scale(binder, (1000, 600))
-dispenser = pygame.image.load("Images/singleDispenser.png")
-resized_dispenser = pygame.transform.scale(dispenser, (500, 300))
+dispenser = pygame.image.load("Images/draft dispense.png")
+resized_dispenser = pygame.transform.scale(dispenser, (600, 600))
 sprite_sheet = pygame.image.load("Images/dispense sheet.png").convert_alpha()
 cardanim_sheet = pygame.image.load("Images/cardanim.png").convert_alpha()
 lever = pygame.image.load("Images/test6.png")
@@ -115,19 +109,6 @@ password_box = TypingBox((center_x, 350), 800, 100, 2)
 highlight_x = 95
 highlight_y = 73
 highlight_num = 0
-
-#sfx
-
-volume = 50  
-select_sfx = pygame.mixer.Sound("SFx/select.wav")
-dispense_sfx = pygame.mixer.Sound("SFX/dispense.wav")
-page_turn_sfx = pygame.mixer.Sound("SFX/paperSlide.wav")
-card_zoom_sfx = pygame.mixer.Sound("SFx/pageTurn.wav")
-no_coins_sfx = pygame.mixer.Sound("SFX/noCoins.wav")
-new_card_sfx = pygame.mixer.Sound("SFX/new.wav")
-owned_card_sfx = pygame.mixer.Sound("SFX/owned.wav")
-coins_sfx = pygame.mixer.Sound("SFX/coins.mp3")
-
 
 #animaiton for card reveal
 alpha = 0
@@ -184,6 +165,9 @@ cut_scene_frame = 0
 cut_scene_cooldown = 75
 for i in range(33):
     cut_scene_animation.append(get_image(cut_scene_sheet, i, 1000, 600, 1.3, back))
+# variable to determine what to transition to after the cut scene
+cut_to = 1
+trade_success = False
 
 #variable for card zoom factor
 card_zoom = 1
@@ -198,7 +182,7 @@ card_images = {}
 card_back = pygame.transform.scale(pygame.image.load("Images/card_back.png"), (90, 123))
 for i in range(59):
     if i < 18: 
-        card = pygame.image.load("Images/card_" + str(i) + ".png")
+        card = pygame.transform.scale(pygame.image.load("Images/card_" + str(i) + ".png"), (90, 123))
     #temporary placeholder for the rest of the card b/c too lazy to load in rn
     else:
         card = pygame.transform.scale(pygame.image.load("Images/card_placeholder.png"), (90, 123))
@@ -252,13 +236,15 @@ running = [True]
 
 server_messages = [None, None, None, None, None, None, None] # check utils
 
-coins = 50
 selected_cards = [None, None, None, None]
-userdata = [username, password, [], selected_cards, coins] # username, password, owned cards, selected cards
-coins = userdata[4]
+userdata = [username, password, [], selected_cards, 50] # username, password, owned cards, selected cards
 cards_owned = userdata[2]
 must_swap = False
 opponent_username = None
+
+# for trading - players can only trade with other players who are also on the trade page b/c live trading
+# similar to finding an opponent to battle but instead finding all the possible trade players
+available_players = []
 
 threading.Thread(target=handle_server_connection, args=(connection,running,server_messages,userdata)).start()
 
@@ -280,9 +266,7 @@ while running[0]:
             running[0] = False
         if event.type == pygame.KEYDOWN: 
             key_pressed = True
-            keys = pygame.key.get_pressed()           
-
-            
+            keys = pygame.key.get_pressed()
 
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
@@ -317,10 +301,11 @@ while running[0]:
             elif page == "View Trade":
                 if pointer_pos < 2:
                     pointer_pos += 1
-                    
+            
             elif page == "SinglePlayerMenu":
                 if pointer_pos < 3:
                     pointer_pos += 1
+            
             else:
                 pointer_pos += 1
 
@@ -356,16 +341,14 @@ while running[0]:
             elif page == "Choose Trade Card":
                 if pointer_pos > 1:
                     pointer_on = False
-                    pointer_pos -= 1
+                    pointer_pos -= 1                    
+
             else:
                 if pointer_pos > 1:
                     pointer_pos -= 1
 
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-            select_sfx.play()
-            select_sfx.set_volume(volume/100)
-            # pygame.mixer.Sound.play(select_sfx)
             keep_pointer = False
 
             if page == "Start":
@@ -448,9 +431,22 @@ while running[0]:
                 if pointer_pos == 1:
                     page = "Menu"
             elif page == "Trade":
-                page = "Menu"
-                if pointer_pos == 2:
+                if pointer_pos == 4:
                     page = "Menu"
+                else: 
+                    page = "Trade Loading"
+                    keep_pointer = True
+            elif page == "Choose Trade Card":
+                if pointer_pos == 2:
+                    page = "Trade Loading"
+            elif page == "View Trade":
+                page = "Trade Result"
+                if pointer_pos == 1:
+                    trade_success = True
+                elif pointer_pos == 2:
+                    trade_success = False
+            elif page == "Trade Result":
+                page = "Menu"
             elif page == "Choose Card":
                 keep_pointer = True
                 if pointer_pos <= 4:
@@ -568,24 +564,13 @@ while running[0]:
                 if pointer_pos == 1:
                     draw_credits(screen, button_exit, fontx1, hong)
                 elif pointer_pos == 2:
-                    page = "Volume"
-                    slider_x = 200
-                    slider_y = 300
-                    slider_width = 600
-                    slider_height = 100
-                    target_volume = volume
-                elif pointer_pos == 3:
                     page = "Menu"
-            elif page == "Volume":
-                page = "Settings"
             elif page == "Binder":
                 if pointer_pos == 2:
                     page = "Menu"
                 
                 if card_zoom < 3:
                     card_zoom += 0.2
-                    card_zoom_sfx.play()
-                    card_zoom_sfx.set_volume(volume/100)
                 if card_zoom >= 3:
                     card_zoom = 1
                 
@@ -606,8 +591,10 @@ while running[0]:
                     page = "Start"
                     username_box.reset()
                     password_box.reset()
+            
             if not keep_pointer:
                 pointer_pos = 1
+            
         
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
@@ -627,8 +614,6 @@ while running[0]:
                     elif left_page + 1 > 2:
                         left_page -= 2
                         highlight_num = 11 + highlight_num
-                        page_turn_sfx.play()
-                        page_turn_sfx.set_volume(volume/100)
                     if card_zoom >= 3:
                         card_zoom = 1
 
@@ -637,10 +622,10 @@ while running[0]:
                     pointer_pos -= 1
                 if pointer_pos == 5:
                     if pointer_hover>0: pointer_hover-=1
-            
-            elif page == "Volume":
-                target_volume = max(target_volume - 5, 0)
-    
+
+            elif page == "Choose Trade Card":
+                if pointer_hover>0: pointer_hover-=1
+
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
             if page == "SBattle" or page == "Battle":
@@ -655,8 +640,6 @@ while running[0]:
                     elif left_page + 1 < 8:
                         left_page += 2
                         highlight_num = highlight_num % 9 - 2
-                        page_turn_sfx.play()
-                        page_turn_sfx.set_volume(volume/100)
                     if card_zoom >= 3:
                         card_zoom = 1
 
@@ -665,22 +648,20 @@ while running[0]:
                     pointer_pos += 1
                 if pointer_pos == 5:
                     if pointer_hover<len(userdata[2])-1: pointer_hover+=1
-            
-            elif page == "Volume":
-                target_volume = min(target_volume + 5, 100) 
+                    
+            elif page == "Trade":
+                if pointer_pos < 4:
+                    pointer_pos = 4
 
+            elif page == "Choose Trade Card":
+                if pointer_hover<len(userdata[2])-1: pointer_hover+=1
 
         if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha":
             if lever_rect.collidepoint(event.pos) and not card_visible:
-                if coins >= 10:
-                    coins_sfx.play()
-                    coins_sfx.set_volume(volume/100)
-
-                    dispense_sfx.play()
-                    dispense_sfx.set_volume(volume/100)
-                    coins -= 10
-                    userdata[4] = coins
+                if userdata[4] >= 10:
+                    userdata[4] -= 10
                     connection.send(f"k{userdata[4]}".encode())
+                    
                     gacha = random.randint(1, 59)
                 
                     if gacha not in cards_owned:
@@ -703,10 +684,8 @@ while running[0]:
                     action += 1
                     dispenser_frame = 0
                 else:
-                    no_coins_sfx.play()
-                    no_coins_sfx.set_volume(volume/100)
                     no_coins = "NOT ENOUGH COINS"
-                    no_coins_timer = pygame.time.get_ticks()    
+                    no_coins_timer = pygame.time.get_ticks()
             elif card_visible and card_rect and card_rect.collidepoint(event.pos):
                 #hide card if clicked
                 display_started = False
@@ -750,6 +729,7 @@ while running[0]:
             if response == "1":
                 page = "Menu"
                 connection.send("get cards".encode())
+                connection.send("get coins".encode())
             elif response == "0":
                 display_box(screen, "INCORRECT PASSWORD", base_font, 3)
             elif response == "2":
@@ -1172,18 +1152,18 @@ while running[0]:
             pointer_x = 740
             pointer_y = 550
         
-        draw_choose_your_team(screen, button_exit, text_choose_your_team, text_choose_your_team_rect, text_go, text_go_bg, text_go_rect, selected_cards, pygame.font.Font("Teachemon.ttf", 6), card_images, teachemon_data)
+        draw_choose_your_team(screen, button_exit, text_choose_your_team, text_choose_your_team_rect, text_go, text_go_bg, text_go_rect, selected_cards, base_font, card_images)
 
         # draw selected card pointer
-        screen.blit(pointer_down, ((pointer_selected * 180)+30, 60))
+        screen.blit(pointer_down, ((pointer_selected * 200)-22, 60))
         # draw hover card pointer
         if pointer_pos <= 4:
-            screen.blit(pointer_up, ((pointer_pos * 180)+30, 270))
+            screen.blit(pointer_up, ((pointer_pos * 200)-22, 270))
         if pointer_pos == 5:
-            screen.blit(pointer_down, (478, 280))
-            screen.blit(pointer_up, (478, 490))
+            screen.blit(pointer_down, (478, 270))
+            screen.blit(pointer_up, (478, 480))
         
-        draw_card_wheel(screen, userdata[2], selected_cards, pointer_hover, base_font, pygame.font.Font("Teachemon.ttf", 6), card_images, teachemon_data)
+        draw_card_wheel(screen, userdata[2], selected_cards, pointer_hover, base_font, small_font, card_images)
 
     elif page == "Loading":
         pointer_on = True
@@ -1307,7 +1287,7 @@ while running[0]:
                     if player_num in dead_players:
                         battle_page = "30"
                     timer_on = True
-                    timer = Timer(int(parsed_msg[1]), screen, running, base_font, (center_x, 250))
+                    timer = Timer(int(parsed_msg[1]), screen, running, base_font, (30, 30))
                 elif game_message[1] == "2":
                     first_to_cast = 0
                     actions = json.loads(parsed_msg[0])
@@ -1675,7 +1655,7 @@ while running[0]:
             pointer_on = False
         if card_zoom > 1 and card_zoom <= 3:
             card_zoom += 0.2
-        draw_binder(screen, left_page, left_page + 1, resized_binder, pygame.font.Font("Teachemon.ttf", 9), card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data, login_bg)
+        draw_binder(screen, left_page, left_page + 1, resized_binder, fontx1, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data)
         
 
         
@@ -1696,14 +1676,14 @@ while running[0]:
         
         pointer_x = 55
         pointer_y = 257 + 70 * (pointer_pos - 1)        
-        draw_claim_menu(screen, logo, big_font.render("GACHA", True, (0, 0, 0)), big_font.render("TRADE", True, (0, 0, 0)), big_font.render("EXIT", True, (0, 0, 0)), resized_dispenser, screen_bg)
+        draw_claim_menu(screen, logo, big_font.render("GACHA", True, (0, 0, 0)), big_font.render("TRADE", True, (0, 0, 0)), big_font.render("EXIT", True, (0, 0, 0)))
     
     elif page == "Gacha":
         pointer_on = True
         pointer_pos = 1
         pointer_x = 740
         pointer_y = 550
-        draw_claim(screen, button_exit, font, coins, animation_list, dispenser_frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin,
+        draw_claim(screen, button_exit, font, userdata[4], animation_list, dispenser_frame, action, card_visible, current_card, card_rect, screen_bg, resized_coin,
                    alpha, card_started, card_anim, max_cardanim, fade_started,
                    cardanim_list, cardanim_frame, display_started, no_coins, no_coins_duration, no_coins_timer, owned, big_font)
         current_time = pygame.time.get_ticks()
@@ -1716,12 +1696,6 @@ while running[0]:
                     fading_in = False 
                     card_started = True
                     card_anim = 0
-                    if gacha not in cards_owned:
-                        new_card_sfx.play()
-                        new_card_sfx.set_volume(volume/100)
-                    else:
-                        owned_card_sfx.play()
-                        owned_card_sfx.set_volume(volume/100)
         if display_started:
             if current_time - last_update >= cardanim_cooldown:
                 cardanim_frame += 1
@@ -1746,20 +1720,51 @@ while running[0]:
                 dispenser_frame = 0
     
     elif page == "Trade":
+        pointer_on = True
+        if pointer_pos == 4:
+            pointer_x = 750
+            pointer_y = 550
+        else: 
+            pointer_x = 150
+            pointer_y = 200 + 100 * (pointer_pos - 1)
+        # send some server message that this player is trying to trade and receive from server list of available players trying to trade
+        # placeholder
+        available_players = ["PLAYER 1", "PLAYER 2", "PLAYER 3", "PLAYER 4", "PLAYER 5"]
+        draw_trade(screen, cards_owned, card_images, button_exit, big_font, binder_highlight, available_players)
+    
+    elif page == "Trade Loading":
+        pointer_on = False
+        # "up to continue" is temporary placeholder until server connections are implemented
+        draw_trade_loading(screen, small_font, available_players[pointer_pos - 1])
+    
+    elif page == "Choose Trade Card":
+        pointer_x = 350
+        pointer_y = 530
+        draw_trade_wheel(screen, userdata[2], pointer_hover, base_font, big_font, text_go, text_go_bg, text_go_rect, card_images)
+        screen.blit(pointer_down, (485, 230))
+        screen.blit(pointer_up, (485, 400))
+    
+    elif page == "View Trade":
+        # last argument card_images[0] (recieve card) is placeholder for now
+        # replace once server connection is implemented
+        pointer_on = True
+        pointer_x = 350
+        pointer_y = 165 + pointer_pos * 130
+        draw_view_trade(screen, big_font, base_font, card_images[userdata[2][pointer_hover]], card_images[0])
+
+    elif page == "Trade Result": 
+        pointer_on = True
         pointer_x = 750
         pointer_y = 550
-        if pointer_pos == 2:
-            pointer_on = True
-        else:
-            pointer_on = False
-        
-        screen.fill("grey")
-        # draw_trade(screen, cards_owned, card_images, button_exit, big_font, binder_highlight, pointer_up)
-    
+        # if trade_success:
+            # add the traded card to the other player idk how to do that lololol
+            # remove the traded card from this player userdata
+        draw_trade_result(screen, big_font, trade_success, button_exit)
+
     elif page == "Cut":
         pointer_on = False
         draw_cut(screen, button_exit, fontx3, big_font, cut_scene_animation, cut_scene_frame, vs_bg, main_screen_bg, userdata[0], opponent_username, cut_to)
-        
+
         current_time = pygame.time.get_ticks()
         if current_time - last_update >= cut_scene_cooldown:
             if cut_scene_frame == 32:
@@ -1782,32 +1787,14 @@ while running[0]:
        
     elif page == "Settings":
         pointer_on = True
-        if pointer_pos > 3:
-            pointer_pos = 3
+        if pointer_pos > 2:
+            pointer_pos = 2
         pointer_x = 270
         pointer_y = 107 + 70 * (pointer_pos-1)
-        draw_settings(screen, button_credits, base_font.render("VOLUME", True, (0, 0, 0)), button_exit)
-
-    elif page == "Volume":
-        pointer_on = False  
-
-        screen.fill("grey")
-        screen.blit(font.render("ADJUST VOLUME", True, "Black"), (260, 150))
-        screen.blit(button_exit, (785, 555))
-        screen.blit(pointer, (730, 555))
-
-        if abs(volume - target_volume) > 0.5:  
-            volume += (target_volume - volume) * 0.1  
-
-        pygame.mixer.music.set_volume(volume / 100)
-        pygame.draw.rect(screen, "black", (slider_x, slider_y, slider_width, slider_height))
-        filled_width = int((volume / 100) * slider_width)
-        pygame.draw.rect(screen, "yellow", (slider_x, slider_y, filled_width, slider_height))
-
-
-    
+        draw_settings(screen, button_credits, button_exit)
     if pointer_on:
         screen.blit(pointer, (pointer_x, pointer_y))
+
     pygame.display.update()
 
 pygame.quit()
