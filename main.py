@@ -117,6 +117,8 @@ highlight_y = 73
 highlight_num = 0
 
 #sfx
+
+volume = 50  
 select_sfx = pygame.mixer.Sound("SFx/select.wav")
 dispense_sfx = pygame.mixer.Sound("SFX/dispense.wav")
 page_turn_sfx = pygame.mixer.Sound("SFX/paperSlide.wav")
@@ -361,7 +363,9 @@ while running[0]:
 
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
-            pygame.mixer.Sound.play(select_sfx)
+            select_sfx.play()
+            select_sfx.set_volume(volume/100)
+            # pygame.mixer.Sound.play(select_sfx)
             keep_pointer = False
 
             if page == "Start":
@@ -444,6 +448,7 @@ while running[0]:
                 if pointer_pos == 1:
                     page = "Menu"
             elif page == "Trade":
+                page = "Menu"
                 if pointer_pos == 2:
                     page = "Menu"
             elif page == "Choose Card":
@@ -564,7 +569,11 @@ while running[0]:
                     draw_credits(screen, button_exit, fontx1, hong)
                 elif pointer_pos == 2:
                     page = "Volume"
-                    draw_volume(screen, button_exit, pointer, base_font)
+                    slider_x = 200
+                    slider_y = 300
+                    slider_width = 600
+                    slider_height = 100
+                    target_volume = volume
                 elif pointer_pos == 3:
                     page = "Menu"
             elif page == "Volume":
@@ -575,7 +584,8 @@ while running[0]:
                 
                 if card_zoom < 3:
                     card_zoom += 0.2
-                    pygame.mixer.Sound.play(card_zoom_sfx)
+                    card_zoom_sfx.play()
+                    card_zoom_sfx.set_volume(volume/100)
                 if card_zoom >= 3:
                     card_zoom = 1
                 
@@ -617,7 +627,8 @@ while running[0]:
                     elif left_page + 1 > 2:
                         left_page -= 2
                         highlight_num = 11 + highlight_num
-                        pygame.mixer.Sound.play(page_turn_sfx)
+                        page_turn_sfx.play()
+                        page_turn_sfx.set_volume(volume/100)
                     if card_zoom >= 3:
                         card_zoom = 1
 
@@ -626,6 +637,9 @@ while running[0]:
                     pointer_pos -= 1
                 if pointer_pos == 5:
                     if pointer_hover>0: pointer_hover-=1
+            
+            elif page == "Volume":
+                target_volume = max(target_volume - 5, 0)
     
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
@@ -641,7 +655,8 @@ while running[0]:
                     elif left_page + 1 < 8:
                         left_page += 2
                         highlight_num = highlight_num % 9 - 2
-                        pygame.mixer.Sound.play(page_turn_sfx)
+                        page_turn_sfx.play()
+                        page_turn_sfx.set_volume(volume/100)
                     if card_zoom >= 3:
                         card_zoom = 1
 
@@ -650,13 +665,19 @@ while running[0]:
                     pointer_pos += 1
                 if pointer_pos == 5:
                     if pointer_hover<len(userdata[2])-1: pointer_hover+=1
+            
+            elif page == "Volume":
+                target_volume = min(target_volume + 5, 100) 
 
 
         if event.type == pygame.MOUSEBUTTONDOWN and page == "Gacha":
             if lever_rect.collidepoint(event.pos) and not card_visible:
                 if coins >= 10:
-                    pygame.mixer.Sound.play(coins_sfx)
-                    pygame.mixer.Sound.play(dispense_sfx)
+                    coins_sfx.play()
+                    coins_sfx.set_volume(volume/100)
+
+                    dispense_sfx.play()
+                    dispense_sfx.set_volume(volume/100)
                     coins -= 10
                     userdata[4] = coins
                     connection.send(f"k{userdata[4]}".encode())
@@ -682,7 +703,8 @@ while running[0]:
                     action += 1
                     dispenser_frame = 0
                 else:
-                    pygame.mixer.Sound.play(no_coins_sfx)
+                    no_coins_sfx.play()
+                    no_coins_sfx.set_volume(volume/100)
                     no_coins = "NOT ENOUGH COINS"
                     no_coins_timer = pygame.time.get_ticks()    
             elif card_visible and card_rect and card_rect.collidepoint(event.pos):
@@ -1225,6 +1247,7 @@ while running[0]:
                     time.sleep(3)
                     pointer_pos = 1
                     page = "Cut"
+                    cut_to = 1
                     print("CUT SCENE\n")
                 else:
                     print(f"Wart {server_messages[3]}")
@@ -1258,7 +1281,7 @@ while running[0]:
                     else:
                         game_status = "move"
                     timer_on = True
-                    timer = Timer(int(server_messages[3][5:]), screen, running, base_font, (center_x, 250))
+                    timer = Timer(int(server_messages[3][5:]), screen, running, base_font, (50, 50))
                     waiting = False
             elif game_message[0] == "m":
                 parsed_msg = game_message[2:].split("'")
@@ -1347,6 +1370,7 @@ while running[0]:
                 opp_effects_display = small_font.render(f"EFFECTS {opp_effect[0]} {opp_effect[1]}", True, (0, 0, 0))
                 screen.blit(self_effects_display, self_effects_display.get_rect(center=(center_x-250, center_y+50)))
                 screen.blit(opp_effects_display, opp_effects_display.get_rect(center=(center_x+300, center_y+50)))
+                must_swap = False
 
                 if battle_page[0] == "1" and pointer_pos < 4:
                     curr_card_data = teachemon_data[selected_cards[curr_cards[player_num]]-1]
@@ -1432,14 +1456,14 @@ while running[0]:
                                 data = teachemon_data[card_num-1]
                                 move_info = (source_name.upper(), data["Name"].upper(), data[f"Move {int(action_name[1]) + 1} Name"].upper(), data[f"Move {int(action_name[1]) + 1} Damage"].upper())
                                 scene = 0
-                                print_delay = 3
+                                print_delay = 1
                             elif action_name[0] == "i":
                                 card_num = selected_cards[curr_cards[player_num]] if source == player_num else opponent_cards[curr_cards[source]]
                                 data = teachemon_data[card_num-1]
                                 potion_names = ("Attack Potion", "Defense Potion", "Energy Potion")
-                                item_info = (source_name.upper(), data["Name"].upper(), potion_names[int(action_name[1])])
+                                item_info = (source_name.upper(), data["Name"].upper(), potion_names[int(action_name[1])].upper())
                                 scene = 0
-                                print_delay = 3
+                                print_delay = 1
                             if source == player_num:
                                 is_self = True
                             print()
@@ -1651,7 +1675,7 @@ while running[0]:
             pointer_on = False
         if card_zoom > 1 and card_zoom <= 3:
             card_zoom += 0.2
-        draw_binder(screen, left_page, left_page + 1, resized_binder, pygame.font.Font("Teachemon.ttf", 9), card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data)
+        draw_binder(screen, left_page, left_page + 1, resized_binder, pygame.font.Font("Teachemon.ttf", 9), card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, teachemon_data, login_bg)
         
 
         
@@ -1693,9 +1717,11 @@ while running[0]:
                     card_started = True
                     card_anim = 0
                     if gacha not in cards_owned:
-                        pygame.mixer.Sound.play(new_card_sfx)
+                        new_card_sfx.play()
+                        new_card_sfx.set_volume(volume/100)
                     else:
-                        pygame.mixer.Sound.play(owned_card_sfx)
+                        owned_card_sfx.play()
+                        owned_card_sfx.set_volume(volume/100)
         if display_started:
             if current_time - last_update >= cardanim_cooldown:
                 cardanim_frame += 1
@@ -1726,19 +1752,29 @@ while running[0]:
             pointer_on = True
         else:
             pointer_on = False
-        draw_trade(screen, cards_owned, card_images, button_exit, big_font, binder_highlight, pointer_up)
+        
+        screen.fill("grey")
+        # draw_trade(screen, cards_owned, card_images, button_exit, big_font, binder_highlight, pointer_up)
     
     elif page == "Cut":
         pointer_on = False
-        draw_cut(screen, button_exit, fontx3, cut_scene_animation, cut_scene_frame, vs_bg, main_screen_bg, userdata[0], opponent_username)
+        draw_cut(screen, button_exit, fontx3, big_font, cut_scene_animation, cut_scene_frame, vs_bg, main_screen_bg, userdata[0], opponent_username, cut_to)
         
         current_time = pygame.time.get_ticks()
         if current_time - last_update >= cut_scene_cooldown:
             if cut_scene_frame == 32:
                 pygame.time.wait(1500)
                 cut_scene_frame = 0
-                page = "Battle"
-                connection.send("xCONNECTED".encode())
+                if cut_to == 1:
+                    page = "Battle"
+                    connection.send("xCONNECTED".encode())
+                if cut_to == 2:
+                    page = "Choose Trade Card"
+                    # send server connection 
+                if cut_to == 3:
+                    page = "View Trade"
+                    # send server connection 
+
             else:
                 cut_scene_frame += 1
                 last_update = current_time
@@ -1751,9 +1787,27 @@ while running[0]:
         pointer_x = 270
         pointer_y = 107 + 70 * (pointer_pos-1)
         draw_settings(screen, button_credits, base_font.render("VOLUME", True, (0, 0, 0)), button_exit)
+
+    elif page == "Volume":
+        pointer_on = False  
+
+        screen.fill("grey")
+        screen.blit(font.render("ADJUST VOLUME", True, "Black"), (260, 150))
+        screen.blit(button_exit, (785, 555))
+        screen.blit(pointer, (730, 555))
+
+        if abs(volume - target_volume) > 0.5:  
+            volume += (target_volume - volume) * 0.1  
+
+        pygame.mixer.music.set_volume(volume / 100)
+        pygame.draw.rect(screen, "black", (slider_x, slider_y, slider_width, slider_height))
+        filled_width = int((volume / 100) * slider_width)
+        pygame.draw.rect(screen, "yellow", (slider_x, slider_y, filled_width, slider_height))
+
+
+    
     if pointer_on:
         screen.blit(pointer, (pointer_x, pointer_y))
-
     pygame.display.update()
 
 pygame.quit()

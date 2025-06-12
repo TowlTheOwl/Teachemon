@@ -53,8 +53,10 @@ def draw_battle_menu(screen, logo, button_m, button_s, button_e):
     screen.blit(button_s, (100, 332))
     screen.blit(button_e, (100, 402))
 
-def draw_claim_menu(screen, logo, gacha, trade, exit):
+def draw_claim_menu(screen, logo, gacha, trade, exit, resized_dispenser, screen_bg):
     screen.fill("grey")
+    screen.blit(screen_bg, (0,0))
+    screen.blit(resized_dispenser, (400, 250))
     screen.blit(logo, (30, 50))
     screen.blit(gacha, (100, 262))
     screen.blit(trade, (100, 332))
@@ -126,8 +128,12 @@ def draw_trade_result(screen, font, success, exit):
         screen.blit(font.render("TRADE DENCLINED...", True, "Black"), (200, 200))
     screen.blit(exit, (785,555))
 
-def draw_singleplayer_menu(screen):
+def draw_singleplayer_menu(screen:pygame.SurfaceType, font, big_font):
     screen.fill("grey")
+    screen.blit(big_font.render("SINGLE PLAYER", True, "Black"), (150, 50))
+    screen.blit(font.render("EASY", True, "Black"), (150, 200))
+    screen.blit(font.render("MEDIUM", True, "Black"), (150, 350))
+    screen.blit(font.render("HARD", True, "Black"), (150, 500))
 
 def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank, teacher_info:dict, opp_username, small_font:pygame.font.Font, other_cards:tuple):
     if page == "00":
@@ -141,9 +147,9 @@ def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank
             t14 = font.render("Back".upper(), True, "White")
 
         elif page == "20":
-            t11 = font.render("Item 1".upper(), True, "White")
-            t12 = font.render("Item 2".upper(), True, "White")
-            t13 = font.render("Item 3".upper(), True, "White")
+            t11 = font.render("Attack Potion".upper(), True, "White")
+            t12 = font.render("Defense Potion".upper(), True, "White")
+            t13 = font.render("Energy Potion".upper(), True, "White")
             t14 = font.render("Back".upper(), True, "White")
             
         elif page == "30":
@@ -170,8 +176,8 @@ def draw_battle(screen:pygame.SurfaceType, page, font, battle_base, battle_blank
 #     if battle_page == "Main":
 #         screen.blit(battle_main, (0, 0))
 
-def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, data):
-    screen.fill("grey")
+def draw_binder(screen, left, right, binder, font, card_images, cards_owned, card_back, button_exit, card_zoom, binder_highlight, highlight_num, data, login_bg):
+    screen.blit(login_bg, (0,0))
     screen.blit(binder, (0, 0))
 
     x = 150
@@ -291,10 +297,11 @@ def draw_cut(screen, button_exit, font, big_font, animation_list, frame, vs_bg, 
 
     screen.blit(animation_list[frame], (0, -150))
 
-def draw_settings(screen, button_credits, button_exit):
+def draw_settings(screen, button_credits, button_volume, button_exit):
     screen.fill("grey")
     screen.blit(button_credits, (315,112))
-    screen.blit(button_exit, (398,182))
+    screen.blit(button_volume, (398, 182))
+    screen.blit(button_exit, (415,252))
 
 def draw_credits(screen, button_exit, font, image):
     pygame.init()
@@ -342,7 +349,7 @@ def draw_credits(screen, button_exit, font, image):
         screen.fill("black")
 
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 running=False
 
         image_x = (width - image.get_width()) // 2
@@ -375,8 +382,6 @@ def draw_choose_your_team(screen:pygame.Surface, button_exit, text_cyt, cyt_rect
         screen.blit(font_small.render(data[selected_cards[i]]["Move 3 Name"].upper(), True, "Black"), (177+180*i, 238))
         screen.blit(font_small.render(data[selected_cards[i]]["Move 3 Damage"] + " DMG".upper(), True, "Black"), (250+180*i, 247))
     
-    
-
 
 def draw_card_wheel(screen, cards, selected_cards, pointer, font:pygame.font.Font, font_small, card_images, data):
     
